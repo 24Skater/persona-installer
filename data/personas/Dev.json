@@ -1,0 +1,26 @@
+{
+  "name": "Dev",
+  "base": [
+    "Git",
+    "GitHub Desktop",
+    "node",
+    "Notepad++",
+    "PowerShell 7",
+    "Python 3 (latest)",
+    "VS Code"
+  ],
+  "optional": [
+    "7Zip",
+    "Adobe Creative Cloud",
+    "Epic Games Launcher",
+    "LocalSend",
+    "Microsoft 365 (Office)",
+    "Steam",
+    "Ubisoft Connect",
+    "VLC",
+    "WhatsApp",
+    "Wireshark",
+    "WorshipTools Presenter",
+    "Zoom"
+  ]
+}
