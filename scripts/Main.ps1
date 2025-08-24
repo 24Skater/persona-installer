@@ -6,7 +6,7 @@ Main.ps1 - Modular UI & logic for persona-based installs
 - Runs installs with progress + logs via winget
 #>
 [CmdletBinding()]
-param()
+param([switch]$DryRun)
 
 $ErrorActionPreference = "Stop"
 
@@ -96,6 +96,12 @@ function Test-Installed([string]$WingetId) {
 }
 
 function Install-One([string]$DisplayName,[string]$WingetId,[int]$Index,[int]$Total) {
+    $status = "[{0}/{1}] {2}" -f $Index, $Total, $DisplayName
+    if ($DryRun) {
+        Write-Host "$status : would install ($WingetId)" -ForegroundColor Yellow
+        return
+    }
+
     $status = "[{0}/{1}] {2}" -f $Index, $Total, $DisplayName
     if (Test-Installed $WingetId) {
         Write-Host "$status : already installed." -ForegroundColor DarkGray
