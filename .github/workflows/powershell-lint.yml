@@ -6,13 +6,12 @@ on:
 
 jobs:
   lint:
-    runs-on: windows-latest
+    # Use windows-2022 to avoid the windows-latest migration for now.
+    runs-on: windows-2022
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup PowerShell
-        uses: actions/setup-powershell@v2
 
       - name: Install PSScriptAnalyzer
         shell: pwsh
@@ -21,7 +20,8 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          Invoke-ScriptAnalyzer -Path ./scripts -Recurse -Severity Warning -OutVariable results
-          if ($results.Count -gt 0) {
+          $results = Invoke-ScriptAnalyzer -Path ./scripts -Recurse -Severity Warning
+          if ($results) {
             $results | Format-Table -AutoSize
+            throw "PSScriptAnalyzer found issues."
           }
