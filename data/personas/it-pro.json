@@ -1,0 +1,21 @@
+{
+  "name": "it-pro",
+  "base": [
+    "PowerShell 7",
+    "Git",
+    "Notepad++",
+    "7-Zip",
+    "Everything Search",
+    "Nmap",
+    "Wireshark",
+    "Rufus",
+    "Ventoy",
+    "PuTTY"
+  ],
+  "optional": [
+    "Sysinternals Suite (Store)",
+    "Google Chrome",
+    "VLC",
+    "Zoom"
+  ]
+}

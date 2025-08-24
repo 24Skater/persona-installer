@@ -1,0 +1,19 @@
+{
+  "name": "cybersec-pro",
+  "base": [
+    "Nmap",
+    "Wireshark",
+    "Burp Suite Community",
+    "OWASP ZAP",
+    "Ghidra",
+    "OpenSSL (Win64)",
+    "Python 3 (latest)",
+    "Git"
+  ],
+  "optional": [
+    "Docker CLI",
+    "Docker Desktop",
+    "GitHub CLI",
+    "Node.js (LTS)"
+  ]
+}

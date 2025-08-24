@@ -1,0 +1,16 @@
+{
+  "name": "finance-pro",
+  "base": [
+    "Google Chrome",
+    "Microsoft 365 (Office)",
+    "Adobe Acrobat Reader",
+    "Zoom",
+    "Microsoft Teams",
+    "Slack",
+    "Power BI Desktop"
+  ],
+  "optional": [
+    "Tableau Public",
+    "Citrix Workspace"
+  ]
+}

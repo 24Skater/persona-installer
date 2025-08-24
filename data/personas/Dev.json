@@ -1,26 +1,27 @@
 {
-  "name": "Dev",
+  "name": "dev",
   "base": [
     "Git",
+    "VS Code",
     "GitHub Desktop",
-    "node",
-    "Notepad++",
-    "PowerShell 7",
+    "GitHub CLI",
+    "Node.js (LTS)",
     "Python 3 (latest)",
-    "VS Code"
+    "Java (Microsoft OpenJDK 17)",
+    "Docker Desktop",
+    ".NET SDK"
   ],
   "optional": [
-    "7Zip",
-    "Adobe Creative Cloud",
-    "Epic Games Launcher",
-    "LocalSend",
-    "Microsoft 365 (Office)",
-    "Steam",
-    "Ubisoft Connect",
-    "VLC",
-    "WhatsApp",
-    "Wireshark",
-    "WorshipTools Presenter",
-    "Zoom"
+    "Visual Studio 2022 Community",
+    "Postman",
+    "DBeaver (Community)",
+    "Go (Golang)",
+    "Rust (rustup)",
+    "Maven",
+    "Gradle",
+    "Yarn",
+    "Azure CLI",
+    "AWS CLI v2",
+    "Google Cloud SDK"
   ]
 }
