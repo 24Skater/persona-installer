@@ -1,136 +1,119 @@
-Persona Installer — Quick Setup Guide
+# Persona Installer — Setup Guide
 
-This tool helps you set up a Windows PC in a few clicks. Pick a persona (e.g., Dev, Finance Pro, IT Pro, Cybersecurity), choose optional apps, and the script installs everything for you.
+This guide shows you how to quickly set up and run the **Persona Installer** on Windows.  
+No advanced skills required — just follow the steps.
 
-What you need
+---
 
-Windows 10 or 11
+## ✅ Requirements
+- Windows 10 or 11
+- PowerShell 5+ (PowerShell 7 recommended)
+- [winget (App Installer)](https://learn.microsoft.com/en-us/windows/package-manager/winget/) from Microsoft Store
 
-An internet connection
+---
 
-Administrator access on the PC
+## 📦 Get the Files
 
-(Recommended) Latest App Installer / winget from Microsoft Store
+### Option A: Download ZIP (easiest)
+1. On GitHub, click the green **Code** button → **Download ZIP**
+2. Extract it to a folder (e.g., `C:\Users\YourName\Downloads\persona-installer`)
+3. Open the extracted folder
 
-If you don’t have winget, open the Microsoft Store and install App Installer. Most Windows 11 machines already have it.
+### Option B: Clone with Git
+```powershell
+git clone https://github.com/24Skater/persona-installer.git
+cd persona-installer
+```
 
-1) Get the files
-Option A: Download as ZIP (easiest)
+---
 
-Open the project page on GitHub.
+## ▶️ Run the Installer
 
-Click the green Code button → Download ZIP.
+1. Open the **scripts** folder inside the repo.
+2. Right-click inside the folder → **Open in Terminal**  
+   (or open PowerShell manually and `cd` into `scripts/`).
+3. Run the following commands:
 
-Right-click the ZIP → Extract All… (remember where you put it).
-
-Option B: Clone with Git (if you use Git)
-git clone https://github.com/<your-username>/persona-installer.git
-
-2) Run the installer
-
-Open the folder you extracted/cloned.
-
-Open the scripts folder.
-
-Right-click an empty area → Open in Terminal (or open PowerShell and cd into the scripts folder).
-
-Run these commands:
-
+```powershell
 # Allow this PowerShell session to run the script
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-# Start the installer (Dry Run first so it doesn't install yet)
+# Dry run (preview only — no installs)
 .\Main.ps1 -DryRun
 
-
-You’ll see a menu. Pick 1) Install from persona and try one, like dev or it-pro. With -DryRun, nothing actually installs—it just shows what would happen.
-
-If everything looks good, run it for real:
-
+# Real install
 .\Main.ps1
+```
 
+4. Choose a **persona** (e.g., `dev`, `finance-pro`, `it-pro`, `cybersec-pro`, `personal`, `testbench`).
+5. Select optional apps when prompted.
+6. Confirm → sit back while it installs!
 
-If prompted, choose Yes to run as Administrator. This keeps installs smooth and silent.
+> Run as **Administrator** when prompted. This allows silent installs.
 
-3) How it works (in one minute)
+---
 
-Catalog: a big list of apps and their winget IDs (in data/catalog.json).
+## 🧑‍💻 How It Works
+- **Catalog**: all apps + winget IDs (`data/catalog.json`)
+- **Personas**: profiles listing base + optional apps (`data/personas/*.json`)
+- **Menu**: run `Main.ps1` to:
+  - Install from a persona
+  - Create a new persona
+  - Edit existing personas
+  - Add apps to the catalog
+  - View/export the catalog
 
-Personas: simple JSON files listing “base” apps and “optional” apps (in data/personas/).
+---
 
-UI: the script shows a menu, lets you pick a persona, and then choose optional apps (with a simple list—if available, a small selection window pops up).
+## 🧪 Testing Safely
+- Use `.\Main.ps1 -DryRun` to preview.
+- Try inside **Windows Sandbox** (Pro/Enterprise editions).  
+  Everything resets when you close it.
 
-4) Common tasks
+---
 
-Install from a persona
-Menu → 1) Install from persona → choose a persona → select optional apps → confirm.
+## 🛠️ Troubleshooting
 
-View all available apps
-Menu → 5) View catalog (you can export to CSV, too).
+- **Script blocked** → Run `Set-ExecutionPolicy Bypass -Scope Process -Force` in the same window.  
+- **`winget` not found** → Install *App Installer* from Microsoft Store, then re-run.  
+- **App failed to install** → Check `logs/<AppName>.log`.  
+- **Window closed unexpectedly** → Check transcript logs in `logs/session-YYYYMMDD-HHMMSS.txt`.  
+- **No GUI for app selection** → That’s fine. A text menu appears instead.  
 
-Add a new app to the catalog
-Menu → 4) Manage catalog (add package) → enter a friendly name and the exact winget ID.
+---
 
-Create or edit personas
-Menu → 2) Create new persona or 3) Edit existing persona.
-(No coding—just choose from the list of apps.)
-
-5) Troubleshooting (quick fixes)
-
-“Windows protected your PC” / script blocked
-You already ran Set-ExecutionPolicy Bypass -Scope Process -Force — make sure you ran it in the same PowerShell window, then run the script again.
-
-“winget not found”
-Install App Installer from the Microsoft Store. Close and reopen PowerShell.
-
-Window closes unexpectedly
-Reopen the script. It now keeps a log and asks before closing. Check logs/session-YYYYMMDD-HHMMSS.txt for details.
-
-Selection window doesn’t appear
-That’s fine—there’s a text menu fallback. You can still pick options by number.
-
-An app fails to install
-The script continues with the rest. Check logs/<AppName>.log for the exact reason.
-You can also try:
-
-winget search "<app name>"
-winget install --id Exact.ID.Here -e
-
-
-If the ID changed, update it via the menu: 4) Manage catalog (add package).
-
-6) Safety tips
-
-Try Dry Run first:
-.\Main.ps1 -DryRun shows everything without installing.
-
-Use Windows Sandbox (optional)
-On Windows Pro/Enterprise, enable Windows Sandbox and test the script in a throwaway VM. Close Sandbox to discard changes.
-
-7) Where things are
+## 📂 Repo Structure
+```
 persona-installer/
-├─ scripts/
-│  └─ Main.ps1              ← run this
+├─ scripts/                # Run Main.ps1 here
 ├─ data/
-│  ├─ catalog.json          ← apps & winget IDs
-│  └─ personas/
-│     ├─ dev.json
-│     ├─ finance-pro.json
-│     ├─ it-pro.json
-│     └─ cybersec-pro.json
-└─ logs/                    ← run & install logs
+│  ├─ catalog.json         # App catalog (name → winget ID)
+│  └─ personas/            # Personas (JSON files)
+├─ docs/
+│  └─ setup-guide.md       # This guide
+├─ logs/                   # Logs (auto-created)
+├─ README.md
+└─ LICENSE
+```
 
-8) Need ideas for personas?
+---
 
-dev: Git, VS Code, GitHub Desktop/CLI, Node.js LTS, Python, Docker Desktop, .NET SDK (+ optional cloud CLIs, DB tools)
+## 🎯 Example Personas
 
-finance-pro: Chrome, Microsoft 365, Adobe Reader, Teams, Slack, Power BI (+ optional Tableau, Citrix)
+- **Dev** → VS Code, GitHub CLI, Node.js, Docker, .NET SDK (+ optional Postman, DBeaver, cloud CLIs)  
+- **Finance Pro** → Chrome, Microsoft 365, Power BI, Slack/Teams (+ optional Tableau, Citrix)  
+- **IT Pro** → PowerShell 7, Notepad++, 7-Zip, Wireshark, Nmap, Rufus (+ optional Sysinternals, VLC)  
+- **Cybersecurity Pro** → Wireshark, Burp Suite, ZAP, Ghidra, OpenSSL, Git (+ optional Docker, Node.js)  
+- **Personal** → Git, Chrome, Notepad++, WhatsApp, Zoom (+ optional Steam, Office, Adobe CC)  
+- **Testbench** → PowerShell 7, Python 3, Git
 
-it-pro: PowerShell 7, Notepad++, 7-Zip, Everything, Nmap, Wireshark, Rufus, Ventoy, PuTTY
+---
 
-cybersec-pro: Nmap, Wireshark, Burp Suite Community, OWASP ZAP, Ghidra, OpenSSL, Python, Git
+## 📝 Logs
+- Per-app logs → `logs/<AppName>.log`  
+- Full session transcript → `logs/session-YYYYMMDD-HHMMSS.txt`
 
-That’s it!
+---
 
-If you can open PowerShell and press numbers, you can use this tool.
-If you’re curious, the whole thing is just PowerShell + JSON—easy to customize.
+## 📜 License
+MIT — free to use, modify, and share.
