@@ -6,6 +6,22 @@ This project follows [Semantic Versioning](https://semver.org/).
 ---
 
 ## [Unreleased]
+
+## [v1.0.1] - 2025-08-24
+### Added
+- Expanded documentation suite:
+  - `docs/setup-guide.md` (step-by-step install guide)
+  - `docs/personas.md` (persona overview table)
+  - `docs/catalog-reference.md` (catalog format + winget ID tips)
+  - `docs/troubleshooting.md` (common issues and fixes)
+  - `docs/development.md` (internals, CI/CD, debugging)
+- Added `CONTRIBUTING.md` (contribution guidelines)
+- Added `CHANGELOG.md` baseline with entries
+- Reformatted `README.md` with badges and clear persona list
+
+### Changed
+- Improved repo layout with full `docs/` folder for easy navigation
+
 - Add new personas (gaming, design, etc.)
 - Expand catalog with more professional tools
 - Improve CI checks and automated testing
