@@ -6,7 +6,6 @@ on:
 
 jobs:
   lint:
-    # Use windows-2022 to avoid the windows-latest migration for now.
     runs-on: windows-2022
 
     steps:
@@ -17,11 +16,32 @@ jobs:
         shell: pwsh
         run: Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
 
-      - name: Run PSScriptAnalyzer
+      - name: Run PSScriptAnalyzer with repo settings
+        id: lint
         shell: pwsh
         run: |
-          $results = Invoke-ScriptAnalyzer -Path ./scripts -Recurse -Severity Warning
+          $results = Invoke-ScriptAnalyzer -Path ./scripts -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
           if ($results) {
-            $results | Format-Table -AutoSize
-            throw "PSScriptAnalyzer found issues."
+            $results | Sort-Object Severity, RuleName | Format-Table -AutoSize
           }
+          $errors = @($results | Where-Object { $_.Severity -eq 'Error' })
+          if ($errors.Count -gt 0) {
+            throw "PSScriptAnalyzer found Errors."
+          }
+
+      - name: Save analyzer results
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path Env:GITHUB_STEP_SUMMARY) {
+            "## PSScriptAnalyzer Results`n" | Out-File $Env:GITHUB_STEP_SUMMARY -Append
+            $results | Sort-Object Severity, RuleName | Format-Table -AutoSize | Out-String | Out-File $Env:GITHUB_STEP_SUMMARY -Append
+          }
+          $results | Out-String | Set-Content -Path .\lint-results.txt
+
+      - name: Upload lint results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-results
+          path: lint-results.txt
