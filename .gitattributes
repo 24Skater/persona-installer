@@ -1,0 +1,15 @@
+# Ensure PowerShell scripts use CRLF (Windows style)
+*.ps1 text eol=crlf
+
+# Markdown, JSON, YAML, etc. normalized to LF
+*.md   text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Batch and CMD scripts should also stay CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell scripts (in case you add Linux helpers later)
+*.sh text eol=lf
