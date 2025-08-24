@@ -1,0 +1,23 @@
+{
+  "name": "personal",
+  "base": [
+    "Git",
+    "VS Code",
+    "GitHub Desktop",
+    "Google Chrome",
+    "Notepad++",
+    "PowerShell 7",
+    "VLC",
+    "WhatsApp",
+    "Zoom"
+  ],
+  "optional": [
+    "Steam",
+    "Epic Games Launcher",
+    "Ubisoft Connect",
+    "WorshipTools Presenter",
+    "Microsoft 365 (Office)",
+    "Adobe Creative Cloud",
+    "Python 3 (latest)"
+  ]
+}

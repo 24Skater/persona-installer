@@ -1,0 +1,18 @@
+{
+  "Git": "Git.Git",
+  "VS Code": "Microsoft.VisualStudioCode",
+  "GitHub Desktop": "GitHub.GitHubDesktop",
+  "Google Chrome": "Google.Chrome",
+  "Notepad++": "Notepad++.Notepad++",
+  "PowerShell 7": "Microsoft.PowerShell",
+  "VLC": "VideoLAN.VLC",
+  "WhatsApp": "WhatsApp.WhatsApp",
+  "Zoom": "Zoom.Zoom",
+  "Steam": "Valve.Steam",
+  "Epic Games Launcher": "EpicGames.EpicGamesLauncher",
+  "Ubisoft Connect": "Ubisoft.Connect",
+  "WorshipTools Presenter": "WorshipTools.Presenter",
+  "Microsoft 365 (Office)": "Microsoft.Office",
+  "Adobe Creative Cloud": "Adobe.CreativeCloud",
+  "Python 3 (latest)": "Python.Python.3"
+}
