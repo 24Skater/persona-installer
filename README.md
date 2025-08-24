@@ -1,5 +1,12 @@
 # Persona Installer 🎛️
 
+[![PowerShell](https://img.shields.io/badge/PowerShell-5%2B%20%7C%207-blue?logo=powershell)](https://learn.microsoft.com/powershell/)
+[![Winget](https://img.shields.io/badge/works%20with-winget-success?logo=windows)](https://learn.microsoft.com/windows/package-manager/winget/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/24Skater/persona-installer)](https://github.com/24Skater/persona-installer/releases)
+[![Last commit](https://img.shields.io/github/last-commit/24Skater/persona-installer)](https://github.com/24Skater/persona-installer/commits/main)
+
+
 A modular, **UI-driven PowerShell installer** for Windows.  
 Pick a **persona** (Dev, Finance Pro, IT Pro, Cybersecurity, Personal, Testbench), select optional apps, and the script installs everything for you — with progress and logs.
 
