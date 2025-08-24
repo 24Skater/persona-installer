@@ -1,9 +1,19 @@
 {
   "name": "testbench",
   "base": [
-    "PowerShell 7",
-    "Python 3 (latest)",
-    "Git"
+    "7Zip"
   ],
-  "optional": []
+  "optional": [
+    "Steam",
+    "Ubisoft Connect",
+    "VLC",
+    "WhatsApp",
+    "WorshipTools Presenter",
+    "Zoom",
+    "Microsoft 365 (Office)",
+    "LocalSend",
+    "Google Chrome",
+    "Epic Games Launcher",
+    "Adobe Creative Cloud"
+  ]
 }

@@ -14,5 +14,9 @@
   "WorshipTools Presenter": "WorshipTools.Presenter",
   "Microsoft 365 (Office)": "Microsoft.Office",
   "Adobe Creative Cloud": "Adobe.CreativeCloud",
-  "Python 3 (latest)": "Python.Python.3"
+  "Python 3 (latest)": "Python.Python.3",
+  "node": "OpenJS.NodeJS",
+  "7Zip": "7zip.7zip",
+  "Wireshark": "WiresharkFoundation.Wireshark",
+  "LocalSend": "LocalSend.LocalSend"
 }
