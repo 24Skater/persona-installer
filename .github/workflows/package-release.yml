@@ -1,0 +1,38 @@
+name: Package and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up zip name
+        id: vars
+        run: echo "ZIP_NAME=persona-installer-${GITHUB_REF_NAME}.zip" >> $GITHUB_OUTPUT
+
+      - name: Create zip
+        run: |
+          zip -r "${{ steps.vars.outputs.ZIP_NAME }}" .             -x "*.git*"             -x "logs/*"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.vars.outputs.ZIP_NAME }}
+          path: ${{ steps.vars.outputs.ZIP_NAME }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.vars.outputs.ZIP_NAME }}
+          generate_release_notes: true
