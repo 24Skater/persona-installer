@@ -7,6 +7,48 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v1.3.0] - 2025-10-05
+### Added
+- **Smart Persona Recommendations Integration**: Fully functional menu option that analyzes your system and recommends optimal personas
+  - Automatic hardware detection (RAM, CPU cores, disk space)
+  - Software pattern analysis (development tools, business apps, security tools)
+  - User type classification (Developer, Business User, General User)
+  - Confidence-scored recommendations with detailed reasoning
+  - One-click installation of recommended personas
+  
+- **Dependency Management Integration**: Automatic dependency resolution integrated into persona installation flow
+  - Pre-installation dependency analysis
+  - Dependency tree visualization with installation order
+  - Conflict detection and warnings
+  - Missing dependency identification
+  - Circular dependency detection
+  - User confirmation for installations with issues
+  - Graceful fallback if resolution fails
+
+- **Dynamic Module Loading**: Intelligent module loading system based on feature flags
+  - Core modules always loaded
+  - Optional v1.2.0+ modules load only when features enabled
+  - Graceful degradation if optional modules fail
+  - Improved startup performance
+
+### Fixed
+- **Unicode/Emoji Compatibility**: Resolved all remaining Unicode/emoji parsing errors in v1.2.0 modules
+  - `DependencyManager.psm1`: Replaced box-drawing characters (├─, └─) with ASCII equivalents
+  - `PersonaRecommendationEngine.psm1`: Replaced all emoji indicators with text-based equivalents
+  - Ensures universal compatibility across PowerShell versions and Windows configurations
+
+### Changed
+- **Module Architecture**: Enhanced module loading to support conditional feature activation
+- **Installation Flow**: Enhanced to include optional dependency resolution step
+- **User Experience**: Clearer feedback during dependency analysis and resolution
+- **Version**: Updated to v1.3.0 reflecting feature integration milestone
+
+### Technical Improvements
+- Feature flags now control module loading dynamically
+- Improved error handling for optional features
+- Better separation between core and advanced features
+- Enhanced logging for dependency resolution operations
+
 ## [v1.2.0] - 2025-10-05
 ### Fixed
 - **Unicode/Emoji Compatibility**: Removed all Unicode and emoji characters from PowerShell modules to prevent parsing errors
