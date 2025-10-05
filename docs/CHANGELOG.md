@@ -7,6 +7,24 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v1.2.0] - 2025-10-05
+### Fixed
+- **Unicode/Emoji Compatibility**: Removed all Unicode and emoji characters from PowerShell modules to prevent parsing errors
+  - `CatalogManager.psm1`: Replaced `↔` arrow with ASCII hyphen
+  - `InstallEngine.psm1`: Replaced emoji status indicators (✅❌⏭️📊🚨🔍❓) with ASCII equivalents ([OK], [X], [>>], [!], [?])
+  - `UIHelper.psm1`: Replaced box-drawing characters (╔║╚) and emojis (🔍❌✅⚠️) with standard ASCII characters
+  - `Main.ps1`: Removed emoji characters from menu options to ensure cross-platform compatibility
+
+### Changed
+- **Version**: Updated to v1.2.0
+- **PowerShell Compatibility**: Improved compatibility with PowerShell's default encoding by using ASCII-only characters in code structure
+- **User Interface**: Simplified visual elements while maintaining readability and clarity
+
+### Technical Notes
+- PowerShell scripts should avoid Unicode/emoji characters in code structure unless files are explicitly saved with UTF-8 BOM encoding
+- Emoji characters can still be safely used in `Write-Host` output strings for display purposes
+- This release ensures the script works reliably across different PowerShell environments and Windows configurations
+
 ## [v1.1.0] - 2025-10-05
 ### Added
 - **Modular Architecture**: Completely refactored Main.ps1 into focused modules:
