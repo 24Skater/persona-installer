@@ -519,24 +519,24 @@ function Show-PersonaRecommendations {
         [switch]$ShowSystemInfo
     )
     
-    Write-Host "`n🤖 Smart Persona Recommendations" -ForegroundColor Cyan
+    Write-Host "`nSmart Persona Recommendations" -ForegroundColor Cyan
     Write-Host "=" * 50 -ForegroundColor Cyan
     
     if ($ShowSystemInfo) {
         Write-Host "`nSystem Analysis:" -ForegroundColor Yellow
-        Write-Host "  💻 Memory: $($SystemAnalysis.Hardware.TotalMemoryGB)GB" -ForegroundColor White
-        Write-Host "  🖥️  Processors: $($SystemAnalysis.Hardware.NumberOfProcessors)" -ForegroundColor White
-        Write-Host "  🔧 PowerShell: $($SystemAnalysis.Environment.PowerShellVersion)" -ForegroundColor White
-        Write-Host "  👤 User Type: $($SystemAnalysis.UserProfile.UserType)" -ForegroundColor White
+        Write-Host "  Memory: $($SystemAnalysis.Hardware.TotalMemoryGB)GB" -ForegroundColor White
+        Write-Host "  Processors: $($SystemAnalysis.Hardware.NumberOfProcessors)" -ForegroundColor White
+        Write-Host "  PowerShell: $($SystemAnalysis.Environment.PowerShellVersion)" -ForegroundColor White
+        Write-Host "  User Type: $($SystemAnalysis.UserProfile.UserType)" -ForegroundColor White
         
         if ($SystemAnalysis.Software.Development.Count -gt 0) {
-            Write-Host "  🛠️  Development Tools: $($SystemAnalysis.Software.Development.Count) detected" -ForegroundColor Green
+            Write-Host "  Development Tools: $($SystemAnalysis.Software.Development.Count) detected" -ForegroundColor Green
         }
         if ($SystemAnalysis.Software.Business.Count -gt 0) {
-            Write-Host "  💼 Business Apps: $($SystemAnalysis.Software.Business.Count) detected" -ForegroundColor Green
+            Write-Host "  Business Apps: $($SystemAnalysis.Software.Business.Count) detected" -ForegroundColor Green
         }
         if ($SystemAnalysis.Software.Security.Count -gt 0) {
-            Write-Host "  🛡️  Security Tools: $($SystemAnalysis.Software.Security.Count) detected" -ForegroundColor Green
+            Write-Host "  Security Tools: $($SystemAnalysis.Software.Security.Count) detected" -ForegroundColor Green
         }
     }
     
@@ -554,10 +554,10 @@ function Show-PersonaRecommendations {
         }
         
         $medal = switch ($rank) {
-            1 { "🥇" }
-            2 { "🥈" } 
-            3 { "🥉" }
-            default { "  " }
+            1 { "[1]" }
+            2 { "[2]" } 
+            3 { "[3]" }
+            default { "   " }
         }
         
         Write-Host "`n$medal $rank. $($rec.PersonaName.ToUpper())" -ForegroundColor White
@@ -566,26 +566,26 @@ function Show-PersonaRecommendations {
         if ($rec.Reasons.Count -gt 0) {
             Write-Host "   Why this fits:" -ForegroundColor Gray
             foreach ($reason in $rec.Reasons) {
-                Write-Host "   • $reason" -ForegroundColor Gray
+                Write-Host "   - $reason" -ForegroundColor Gray
             }
         }
     }
     
     if ($SystemAnalysis.Capabilities.Limitations.Count -gt 0) {
-        Write-Host "`n⚠️  System Considerations:" -ForegroundColor Yellow
+        Write-Host "`n[WARNING] System Considerations:" -ForegroundColor Yellow
         foreach ($limitation in $SystemAnalysis.Capabilities.Limitations) {
-            Write-Host "  • $limitation" -ForegroundColor Yellow
+            Write-Host "  - $limitation" -ForegroundColor Yellow
         }
     }
     
     if ($SystemAnalysis.Capabilities.Strengths.Count -gt 0) {
-        Write-Host "`n✨ System Strengths:" -ForegroundColor Green
+        Write-Host "`nSystem Strengths:" -ForegroundColor Green
         foreach ($strength in $SystemAnalysis.Capabilities.Strengths) {
-            Write-Host "  • $strength" -ForegroundColor Green
+            Write-Host "  - $strength" -ForegroundColor Green
         }
     }
     
-    Write-Host "`n💡 Tip: You can still choose any persona manually, or create a custom one!" -ForegroundColor Cyan
+    Write-Host "`nTip: You can still choose any persona manually, or create a custom one!" -ForegroundColor Cyan
 }
 
 # Export functions

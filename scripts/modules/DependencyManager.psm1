@@ -275,7 +275,7 @@ function Show-DependencyAnalysis {
     
     # Issues
     if ($Analysis.HasIssues) {
-        Write-Host "`n⚠️  Issues Found:" -ForegroundColor Red
+        Write-Host "`n[WARNING] Issues Found:" -ForegroundColor Red
         
         if ($Analysis.Conflicts.Count -gt 0) {
             Write-Host "Conflicts:" -ForegroundColor Red
@@ -292,7 +292,7 @@ function Show-DependencyAnalysis {
             $Analysis.CircularDependencies | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
         }
     } else {
-        Write-Host "`n✅ No conflicts detected" -ForegroundColor Green
+        Write-Host "`n[OK] No conflicts detected" -ForegroundColor Green
     }
     
     # Installation order
@@ -301,7 +301,7 @@ function Show-DependencyAnalysis {
         for ($i = 0; $i -lt $Analysis.ResolvedApps.Count; $i++) {
             $app = $Analysis.ResolvedApps[$i]
             $number = ($i + 1).ToString().PadLeft(2)
-            $prefix = if ($app.Dependencies.Count -gt 0) { "├─" } else { "└─" }
+            $prefix = if ($app.Dependencies.Count -gt 0) { "|-" } else { "+-" }
             
             Write-Host "  $number. $prefix $($app.AppName)" -ForegroundColor White
             
