@@ -1,4 +1,4 @@
-# Persona Installer 🎛️ v1.1.0
+# Persona Installer 🎛️ v1.2.0
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5%2B%20%7C%207-blue?logo=powershell)](https://learn.microsoft.com/powershell/)
 [![Winget](https://img.shields.io/badge/works%20with-winget-success?logo=windows)](https://learn.microsoft.com/windows/package-manager/winget/)
@@ -7,32 +7,36 @@
 [![Last commit](https://img.shields.io/github/last-commit/24Skater/persona-installer)](https://github.com/24Skater/persona-installer/commits/main)
 [![PowerShell Lint](https://github.com/24Skater/persona-installer/actions/workflows/powershell-lint.yml/badge.svg)](https://github.com/24Skater/persona-installer/actions/workflows/powershell-lint.yml)
 
-A **modular, enterprise-ready PowerShell installer** for Windows.  
-Pick a **persona** (Dev, Finance Pro, IT Pro, Cybersecurity, Personal, Testbench), select optional apps, and the script installs everything for you — with enhanced logging, error handling, and configuration management.
+A **intelligent, AI-powered PowerShell installer** for Windows.  
+Pick a **persona** (Dev, Finance Pro, IT Pro, Cybersecurity, Personal, Testbench) or get **smart recommendations** based on your system, and the script installs everything for you — with dependency management, enhanced progress tracking, and enterprise-grade features.
 
-## ✨ What's New in v1.1.0
+## ✨ What's New in v1.2.0
 
-- 🏗️ **Modular Architecture**: Completely refactored into focused modules for maintainability
-- ⚙️ **Externalized Configuration**: All settings now configurable via `config/Settings.psd1`
-- 🛡️ **Enhanced Error Handling**: Comprehensive retry logic and user-friendly error messages
-- 📊 **Structured Logging**: JSON-based logging with performance metrics and session tracking
-- 🔍 **Input Validation**: Robust validation for all user inputs and data integrity
-- 🎨 **Improved UI**: Better progress indicators, consistent formatting, and enhanced user experience
+- 🤖 **Smart Persona Recommendations**: AI-powered system analysis suggests optimal personas based on your hardware, software, and usage patterns
+- 🔗 **Dependency Management**: Automatic prerequisite resolution, conflict detection, and intelligent installation ordering  
+- 📊 **Enhanced Progress Tracking**: Rich progress bars with ETA calculations, speed monitoring, and performance analytics
+- 💡 **Intelligent User Experience**: Context-aware guidance, system compatibility analysis, and emoji-enhanced interface
+- 🛡️ **Advanced Error Prevention**: Comprehensive validation prevents installation failures before they occur
+- 🎯 **System Intelligence**: Detects your system capabilities and provides personalized recommendations
 
 ---
 
 ## ✨ Features
 
 - **Personas**: JSON-based profiles (`data/personas/*.json`) with "base" apps and "optional" apps
+- **Smart Recommendations**: AI-powered system analysis suggests optimal personas for your setup
+- **Dependency Management**: Automatic prerequisite resolution with conflict detection and system requirements validation
 - **Interactive menu**:
-  - Install from a persona
-  - Create or edit personas (no coding required)
-  - Manage catalog (add new apps by winget ID)
-  - View full catalog (exportable to CSV)
+  - 🤖 Smart persona recommendations
+  - 📦 Install from persona  
+  - ➕ Create or edit personas (no coding required)
+  - 🛠️ Manage catalog (add new apps by winget ID)
+  - 📋 View full catalog (exportable to CSV)
+- **Enhanced Progress**: Rich progress bars with ETA, speed monitoring, and performance analytics
 - **Dry Run mode**: preview installs without installing (`.\Main.ps1 -DryRun`)
 - **Advanced Logging**: per-app logs + structured session logs with performance metrics
 - **Configurable Settings**: customize behavior via external configuration file
-- **Enhanced Error Handling**: intelligent retry mechanisms and graceful failure handling
+- **Intelligent Error Handling**: comprehensive validation, retry mechanisms, and graceful failure handling
 
 ---
 
@@ -95,10 +99,12 @@ Run as **Administrator** when prompted. This enables silent installs and optimal
 
 ## 📚 Catalog
 
-- Apps live in `data/catalog.json` as **friendly name → winget ID**
-- View them from the menu (`5) View catalog`)
+- Apps live in `data/catalog.json` with **enhanced dependency support**
+- **Legacy format**: Simple friendly name → winget ID mapping  
+- **Enhanced format**: Rich metadata with dependencies, conflicts, and system requirements
+- View them from the menu (`📋 View catalog`)
 - Export to CSV for review
-- Add new apps with (`4) Manage catalog`)
+- Add new apps with dependency information (`🛠️ Manage catalog`)
 
 ---
 
@@ -112,12 +118,31 @@ Run as **Administrator** when prompted. This enables silent installs and optimal
 
 ## 📝 Example Catalog Entries
 
+**Legacy format (still supported):**
 ```json
 {
   "Node.js (LTS)": "OpenJS.NodeJS.LTS",
-  "Docker Desktop": "Docker.DockerDesktop",
-  "Microsoft Teams": "Microsoft.Teams",
-  "Wireshark": "WiresharkFoundation.Wireshark"
+  "Microsoft Teams": "Microsoft.Teams"
+}
+```
+
+**Enhanced format (v1.2.0+):**
+```json
+{
+  "Docker Desktop": {
+    "id": "Docker.DockerDesktop",
+    "dependencies": ["WSL2"],
+    "system_requirements": {
+      "min_windows_version": "10.0.19041",
+      "min_memory_gb": 4,
+      "requires_admin": true
+    }
+  },
+  "GitHub CLI": {
+    "id": "GitHub.cli", 
+    "dependencies": ["Git"],
+    "category": "Development"
+  }
 }
 ```
 
@@ -125,8 +150,10 @@ Run as **Administrator** when prompted. This enables silent installs and optimal
 
 ## 🧰 Logs
 
-- Per-app install logs: `logs/<AppName>.log`
-- Full session transcript: `logs/session-YYYYMMDD-HHMMSS.txt`
+- **Per-app install logs**: `logs/<AppName>.log` with detailed winget output
+- **Structured session logs**: `logs/session-YYYYMMDD-HHMMSS.txt` with JSON performance data
+- **Performance analytics**: Installation timing, success rates, and system metrics
+- **Enhanced error tracking**: Comprehensive error context and troubleshooting information
 
 ---
 
