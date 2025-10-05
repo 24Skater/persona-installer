@@ -350,6 +350,42 @@ function Invoke-InstallPersona {
         $selectedOptional = Select-Apps -Apps $persona.optional -Title "Select optional apps for '$($persona.name)'"
     }
     
+    # Combine base and optional apps for dependency resolution
+    $allApps = $persona.base + $selectedOptional
+    
+    # Resolve dependencies (if feature enabled)
+    $finalAppList = $allApps
+    if ($Config.Features.DependencyChecking) {
+        Write-Host "`nAnalyzing dependencies..." -ForegroundColor Cyan
+        
+        try {
+            $dependencyAnalysis = Resolve-AppDependencies -AppList $allApps -Catalog $Catalog
+            
+            # Show dependency analysis
+            Show-DependencyAnalysis -Analysis $dependencyAnalysis -OriginalList $allApps -ShowDetails
+            
+            # Check for blocking issues
+            if ($dependencyAnalysis.HasIssues) {
+                Write-Host "`n[WARNING] Dependency issues detected. Review above before continuing." -ForegroundColor Yellow
+                $continue = Read-Host "Continue with installation? (Y/N)"
+                if ($continue -notmatch '^(y|yes)$') {
+                    Write-Host "Installation cancelled by user."
+                    return
+                }
+            }
+            
+            # Use resolved app list (in correct order with dependencies)
+            if ($dependencyAnalysis.ResolvedApps.Count -gt 0) {
+                $finalAppList = $dependencyAnalysis.ResolvedApps | ForEach-Object { $_.AppName }
+                Write-Log -Level 'INFO' -Message "Dependencies resolved" -Context @{ original_count = $allApps.Count; final_count = $finalAppList.Count } -Config $LogConfig
+            }
+        }
+        catch {
+            Write-Warning "Dependency resolution failed: $($_.Exception.Message). Continuing with original app list."
+            Write-Log -Level 'WARN' -Message "Dependency resolution failed" -Exception $_.Exception -Config $LogConfig
+        }
+    }
+    
     # Show installation summary and confirm
     if (-not (Show-InstallationSummary -PersonaName $persona.name -BaseApps $persona.base -OptionalApps $selectedOptional -DryRun:$DryRun)) {
         Write-Host "Installation cancelled by user."
@@ -363,7 +399,23 @@ function Invoke-InstallPersona {
     $operation = Start-LoggedOperation -OperationName "InstallPersona-$($persona.name)" -Config $LogConfig
     
     try {
-        $result = Install-PersonaApps -Persona $persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -DryRun:$DryRun
+        # Create modified persona with resolved app list if dependencies were checked
+        if ($Config.Features.DependencyChecking -and $finalAppList.Count -ne $allApps.Count) {
+            # Separate back into base and optional for display purposes
+            $resolvedBase = $finalAppList | Where-Object { $_ -in $persona.base }
+            $resolvedOptional = $finalAppList | Where-Object { $_ -notin $persona.base }
+            
+            $modifiedPersona = [PSCustomObject]@{
+                name = $persona.name
+                description = $persona.description
+                base = @($resolvedBase)
+                optional = @($resolvedOptional)
+            }
+            
+            $result = Install-PersonaApps -Persona $modifiedPersona -SelectedOptionalApps $resolvedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -DryRun:$DryRun
+        } else {
+            $result = Install-PersonaApps -Persona $persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -DryRun:$DryRun
+        }
         Show-InstallationResults -Summary $result -ShowDetails:($Config.UI.ShowDetailedResults -eq $true)
         
         Write-InstallLog -AppName $persona.name -WingetId "persona" -Status "Completed" -Message "Persona installation finished" -Duration $result.Duration -Config $LogConfig
