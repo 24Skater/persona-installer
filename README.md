@@ -1,4 +1,4 @@
-# Persona Installer 🎛️
+# Persona Installer 🎛️ v1.1.0
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5%2B%20%7C%207-blue?logo=powershell)](https://learn.microsoft.com/powershell/)
 [![Winget](https://img.shields.io/badge/works%20with-winget-success?logo=windows)](https://learn.microsoft.com/windows/package-manager/winget/)
@@ -7,21 +7,32 @@
 [![Last commit](https://img.shields.io/github/last-commit/24Skater/persona-installer)](https://github.com/24Skater/persona-installer/commits/main)
 [![PowerShell Lint](https://github.com/24Skater/persona-installer/actions/workflows/powershell-lint.yml/badge.svg)](https://github.com/24Skater/persona-installer/actions/workflows/powershell-lint.yml)
 
-A modular, **UI-driven PowerShell installer** for Windows.  
-Pick a **persona** (Dev, Finance Pro, IT Pro, Cybersecurity, Personal, Testbench), select optional apps, and the script installs everything for you — with progress and logs.
+A **modular, enterprise-ready PowerShell installer** for Windows.  
+Pick a **persona** (Dev, Finance Pro, IT Pro, Cybersecurity, Personal, Testbench), select optional apps, and the script installs everything for you — with enhanced logging, error handling, and configuration management.
+
+## ✨ What's New in v1.1.0
+
+- 🏗️ **Modular Architecture**: Completely refactored into focused modules for maintainability
+- ⚙️ **Externalized Configuration**: All settings now configurable via `config/Settings.psd1`
+- 🛡️ **Enhanced Error Handling**: Comprehensive retry logic and user-friendly error messages
+- 📊 **Structured Logging**: JSON-based logging with performance metrics and session tracking
+- 🔍 **Input Validation**: Robust validation for all user inputs and data integrity
+- 🎨 **Improved UI**: Better progress indicators, consistent formatting, and enhanced user experience
 
 ---
 
 ## ✨ Features
 
-- **Personas**: JSON-based profiles (`data/personas/*.json`) with “base” apps and “optional” apps
+- **Personas**: JSON-based profiles (`data/personas/*.json`) with "base" apps and "optional" apps
 - **Interactive menu**:
   - Install from a persona
   - Create or edit personas (no coding required)
   - Manage catalog (add new apps by winget ID)
   - View full catalog (exportable to CSV)
 - **Dry Run mode**: preview installs without installing (`.\Main.ps1 -DryRun`)
-- **Logging**: per-app logs + full session transcripts in `logs/`
+- **Advanced Logging**: per-app logs + structured session logs with performance metrics
+- **Configurable Settings**: customize behavior via external configuration file
+- **Enhanced Error Handling**: intelligent retry mechanisms and graceful failure handling
 
 ---
 
@@ -43,9 +54,15 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # Real install
 .\Main.ps1
+
+# With custom configuration
+.\Main.ps1 -ConfigPath "C:\MyConfig\Settings.psd1"
+
+# Skip welcome message
+.\Main.ps1 -NoWelcome
 ```
 
-Run as **Administrator** when prompted. This makes installs silent and smooth.
+Run as **Administrator** when prompted. This enables silent installs and optimal performance.
 
 ---
 

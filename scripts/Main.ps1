@@ -1,5 +1,6 @@
 <# 
-Main.ps1 - Modular UI & logic for persona-based installs
+Main.ps1 - Persona Installer v1.1.0
+Modular, UI-driven PowerShell installer for Windows
 - Loads personas from data\personas\*.json
 - Loads catalog from data\catalog.json
 - Menu: install, create persona, edit persona, view catalog, manage catalog, exit
@@ -7,307 +8,389 @@ Main.ps1 - Modular UI & logic for persona-based installs
 
 [CmdletBinding()]
 param(
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$NoWelcome,
+    [string]$ConfigPath = ""
 )
+
+# Version
+$Version = "1.1.0"
 
 $ErrorActionPreference = "Stop"
 
-# ---------------- Paths ----------------
-$Root = Split-Path -Parent $PSCommandPath
-$RepoRoot = Split-Path $Root
+# ---------------- Path Setup ----------------
+$ScriptRoot = Split-Path -Parent $PSCommandPath
+$RepoRoot = Split-Path $ScriptRoot
+$ModulesDir = Join-Path $ScriptRoot "modules"
+$ConfigDir = Join-Path $ScriptRoot "config"
 $DataDir = Join-Path $RepoRoot "data"
 $PersonaDir = Join-Path $DataDir "personas"
 $CatalogPath = Join-Path $DataDir "catalog.json"
 $LogsDir = Join-Path $RepoRoot "logs"
 
-# --- Transcript logging ---
-try {
-    New-Item -ItemType Directory -Path $LogsDir -Force | Out-Null
-    $ts = Get-Date -Format "yyyyMMdd-HHmmss"
-    $TranscriptPath = Join-Path $LogsDir ("session-{0}.txt" -f $ts)
-    Start-Transcript -Path $TranscriptPath -Force | Out-Null
-} catch {
-    Write-Host "Failed to start transcript: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-# ---------------- Utils ----------------
-function Prompt-Exit {
+# ---------------- Load Configuration ----------------
+function Load-Configuration {
+    param([string]$ConfigPath = "")
+    
+    $defaultConfigPath = Join-Path $ConfigDir "Settings.psd1"
+    $configFile = if ($ConfigPath -and (Test-Path $ConfigPath)) { $ConfigPath } else { $defaultConfigPath }
+    
     try {
-        Write-Host ""
-        Read-Host "Press Enter to close this window"
-    } catch {}
-    try { Stop-Transcript | Out-Null } catch {}
-}
-
-function Assert-Admin {
-    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-    ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
-    if (-not $isAdmin) {
-        Write-Host "This script should run as Administrator for unattended installs." -ForegroundColor Yellow
-        $resp = Read-Host "Re-launch elevated now? (Y/N)"
-        if ($resp -match '^(y|yes)$') {
-            $psi = @{
-                FilePath = "powershell.exe"
-                ArgumentList = @("-NoExit","-NoProfile","-ExecutionPolicy","Bypass","-File","`"$PSCommandPath`"")
-                Verb = "RunAs"
-                WindowStyle = "Normal"
-            }
-            if ($DryRun) { $psi.ArgumentList += "-DryRun" }
-            Start-Process @psi
-            exit
+        if (Test-Path $configFile) {
+            $config = Import-PowerShellDataFile -Path $configFile
+            Write-Verbose "Loaded configuration from: $configFile"
+            return $config
         } else {
-            Write-Host "Continuing without elevation. Some packages may prompt or fail." -ForegroundColor Yellow
+            Write-Warning "Configuration file not found: $configFile. Using defaults."
+            return @{}
         }
     }
-}
-
-function Assert-Winget {
-    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        Write-Host "winget (App Installer) not found." -ForegroundColor Red
-        Write-Host "Install from Microsoft Store: 'App Installer', then re-run." -ForegroundColor Yellow
-        throw "winget missing"
+    catch {
+        Write-Warning "Failed to load configuration: $($_.Exception.Message). Using defaults."
+        return @{}
     }
 }
 
-function Load-Catalog {
-    if (-not (Test-Path $CatalogPath)) { throw "Catalog not found at $CatalogPath" }
-    $json = Get-Content $CatalogPath -Raw
-    try {
-        if ($PSVersionTable.PSVersion.Major -ge 7) {
-            return ConvertFrom-Json -InputObject $json -AsHashtable
-        } else {
-            $obj = $json | ConvertFrom-Json
-            $ht = @{}
-            foreach ($p in $obj.PSObject.Properties) { $ht[$p.Name] = $p.Value }
-            return $ht
-        }
-    } catch {
-        throw "Failed to parse catalog: $($_.Exception.Message)"
-    }
-}
-function Save-Catalog($cat) { ($cat | ConvertTo-Json -Depth 5) | Set-Content -Path $CatalogPath -Encoding UTF8 }
-
-function Load-Personas {
-    if (-not (Test-Path $PersonaDir)) { New-Item -ItemType Directory -Path $PersonaDir -Force | Out-Null }
-    $files = Get-ChildItem $PersonaDir -Filter *.json -File
-    $persons = @()
-    foreach ($f in $files) {
-        $obj = Get-Content $f.FullName -Raw | ConvertFrom-Json
-        if ($obj.name) { $persons += $obj }
-    }
-    return $persons
-}
-function Save-Persona($persona) {
-    if (-not $persona.name) { throw "Persona requires 'name'." }
-    $path = Join-Path $PersonaDir ("{0}.json" -f $persona.name)
-    ($persona | ConvertTo-Json -Depth 5) | Set-Content -Path $path -Encoding UTF8
-    return $path
-}
-
-function Out-SelectableList {
-    param([string[]]$Options,[string]$Title="Select items")
-    $selected = @()
-    $hasOGV = Get-Command Out-GridView -ErrorAction SilentlyContinue
-    if ($hasOGV -and $Options -and $Options.Count -gt 0) {
-        try { $selected = $Options | Out-GridView -PassThru -Title $Title } catch { $hasOGV=$false }
-    }
-    if (-not $hasOGV -and $Options -and $Options.Count -gt 0) {
-        Write-Host "`n$Title" -ForegroundColor Cyan
-        for ($i=0;$i -lt $Options.Count;$i++){ Write-Host (" [{0}] {1}" -f ($i+1), $Options[$i]) }
-        $raw = Read-Host "Enter numbers separated by commas (or Enter for none)"
-        if ($raw) {
-            $idx = $raw -split '[,\s]+' | Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ }
-            foreach ($n in $idx) { if ($n -ge 1 -and $n -le $Options.Count) { $selected += $Options[$n-1] } }
-        }
-    }
-    return ,$selected
-}
-
-function Test-Installed([string]$WingetId) {
-    $res = winget list --id $WingetId -e --disable-interactivity 2>$null
-    return ($LASTEXITCODE -eq 0 -and $res -match [Regex]::Escape($WingetId))
-}
-
-function Install-One([string]$DisplayName,[string]$WingetId,[int]$Index,[int]$Total) {
-    $status = "[{0}/{1}] {2}" -f $Index, $Total, $DisplayName
-    if ($DryRun) {
-        Write-Host "$status : would install ($WingetId)" -ForegroundColor Yellow
-        return
-    }
-    if (Test-Installed $WingetId) {
-        Write-Host "$status : already installed." -ForegroundColor DarkGray
-        return
-    }
-    Write-Progress -Activity "Installing apps" -Status "$status" -PercentComplete ([int](($Index/$Total)*100))
-    New-Item -ItemType Directory -Path $LogsDir -Force | Out-Null
-    $log = Join-Path $LogsDir ("{0}.log" -f ($DisplayName -replace '[^\w\-\.]','_'))
-    Write-Host "$status : installing ($WingetId)..." -ForegroundColor Green
-    $args = @("install","--id",$WingetId,"-e","--accept-source-agreements","--accept-package-agreements","--silent")
-    & winget @args *>&1 | Tee-Object -FilePath $log -Append
-    if (-not (Test-Installed $WingetId)) {
-        Write-Host " -> Retrying without --silent..." -ForegroundColor Yellow
-        $args = @("install","--id",$WingetId,"-e","--accept-source-agreements","--accept-package-agreements")
-        & winget @args *>&1 | Tee-Object -FilePath $log -Append
-    }
-    if (Test-Installed $WingetId) { Write-Host " -> Installed." -ForegroundColor Green }
-    else { Write-Host " -> FAILED. See log: $log" -ForegroundColor Red }
-}
-
-function Show-Catalog([hashtable]$Catalog) {
-    Write-Host "`nCatalog entries:" -ForegroundColor Cyan
-    $items = @()
-    foreach ($k in ($Catalog.Keys | Sort-Object)) {
-        $items += [pscustomobject]@{ Name = $k; WingetId = $Catalog[$k] }
-    }
-
-    $hasOGV = Get-Command Out-GridView -ErrorAction SilentlyContinue
-    if ($hasOGV) {
-        try { $items | Out-GridView -Title "Catalog (Name ↔ WingetId)" } catch { $hasOGV = $false }
-    }
-    if (-not $hasOGV) {
-        $widthName = ($items | ForEach-Object { $_.Name.Length } | Measure-Object -Maximum).Maximum
-        if (-not $widthName) { $widthName = 4 }
-        ("{0}  {1}" -f ("Name".PadRight($widthName)), "WingetId") | Write-Host
-        ("-" * ($widthName + 2 + 32)) | Write-Host
-        foreach ($it in $items) {
-            ("{0}  {1}" -f ($it.Name.PadRight($widthName)), $it.WingetId) | Write-Host
-        }
-    }
-
-    $export = Read-Host "Export to CSV? (Y/N)"
-    if ($export -match '^(y|yes)$') {
-        $outPath = Join-Path $DataDir "catalog-export.csv"
-        $items | Export-Csv -Path $outPath -NoTypeInformation -Encoding UTF8
-        Write-Host "Exported to $([IO.Path]::GetFullPath($outPath))" -ForegroundColor Green
-    }
-}
-
-# ---------------- Main ----------------
-try {
-    Assert-Admin
-    Assert-Winget
-    $catalog = Load-Catalog
-    if (-not (Test-Path $LogsDir)) { New-Item -ItemType Directory -Path $LogsDir -Force | Out-Null }
-
-    while ($true) {
-        Write-Host "`n=== Persona Installer ===" -ForegroundColor Green
-        Write-Host " 1) Install from persona"
-        Write-Host " 2) Create new persona"
-        Write-Host " 3) Edit existing persona"
-        Write-Host " 4) Manage catalog (add package)"
-        Write-Host " 5) View catalog"
-        Write-Host " 6) Exit"
-        $choice = Read-Host "Choose an option"
-        switch ($choice) {
-            '1' {
-                $persons = Load-Personas
-                if ($persons.Count -eq 0) { Write-Host "No personas found in $PersonaDir"; continue }
-                Write-Host "`nSelect persona:" -ForegroundColor Cyan
-                for ($i=0;$i -lt $persons.Count;$i++){ Write-Host (" [{0}] {1}" -f ($i+1), $persons[$i].name) }
-                $sel = Read-Host "Number"
-                if ($sel -and $sel -match '^\d+$' -and [int]$sel -ge 1 -and [int]$sel -le $persons.Count) {
-                    $persona = $persons[[int]$sel-1]
-
-                    Write-Host "`nPersona: $($persona.name)" -ForegroundColor Cyan
-                    Write-Host "Base apps:" -ForegroundColor Cyan
-                    $persona.base | ForEach-Object { Write-Host " - $_" }
-                    if ($persona.optional.Count -gt 0) {
-                        Write-Host "Optional apps available:" -ForegroundColor Cyan
-                        $persona.optional | ForEach-Object { Write-Host " - $_" }
-                    }
-
-                    $selectedOpt = @()
-                    if ($persona.optional.Count -gt 0) {
-                        $selectedOpt = Out-SelectableList -Options $persona.optional -Title "Select optional apps for '$($persona.name)'"
-                    }
-
-                    Write-Host "`nSummary:" -ForegroundColor Cyan
-                    Write-Host " Base:"; $persona.base | ForEach-Object { Write-Host "  - $_" }
-                    if ($selectedOpt.Count -gt 0) { Write-Host " Optional:"; $selectedOpt | ForEach-Object { Write-Host "  - $_" } }
-                    else { Write-Host " Optional: (none)" }
-
-                    $go = Read-Host "Proceed with installation? (Y/N)"
-                    if ($go -notmatch '^(y|yes)$') { Write-Host "Cancelled."; continue }
-
-                    $queue = @($persona.base + $selectedOpt)
-                    $total = $queue.Count
-                    $i = 0
-                    foreach ($app in $queue) {
-                        $i++
-                        if (-not $catalog.ContainsKey($app)) {
-                            Write-Host "[SKIP] '$app' not in catalog. Add it via 'Manage catalog'." -ForegroundColor Yellow
-                            continue
-                        }
-                        Install-One -DisplayName $app -WingetId $catalog[$app] -Index $i -Total $total
-                    }
-                    Write-Progress -Activity "Installing apps" -Completed
-                    Write-Host "`nDone. Logs in $LogsDir" -ForegroundColor Cyan
-
-                } else { Write-Host "Invalid selection." }
+# ---------------- Module Loading ----------------
+function Import-PersonaModules {
+    param([string]$ModulesPath)
+    
+    $modules = @('PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
+    
+    foreach ($module in $modules) {
+        $modulePath = Join-Path $ModulesPath "$module.psm1"
+        if (Test-Path $modulePath) {
+            try {
+                Import-Module $modulePath -Force -DisableNameChecking
+                Write-Verbose "Imported module: $module"
             }
-            '2' {
-                # Create new persona
-                $pname = Read-Host "New persona name (alphanumeric and dashes)"
-                if (-not $pname) { Write-Host "Cancelled."; continue }
-                $persons = Load-Personas
-                $source = $null
-                if ($persons.Count -gt 0) {
-                    Write-Host "Clone from existing? (Enter for none)"
-                    for ($i=0;$i -lt $persons.Count;$i++){ Write-Host (" [{0}] {1}" -f ($i+1), $persons[$i].name) }
-                    $sel = Read-Host "Number to clone, or Enter"
-                    if ($sel -and $sel -match '^\d+$' -and [int]$sel -ge 1 -and [int]$sel -le $persons.Count) { $source = $persons[[int]$sel-1] }
+            catch {
+                Write-Error "Failed to import module '$module': $($_.Exception.Message)"
+                throw
+            }
+        } else {
+            Write-Error "Module not found: $modulePath"
+            throw
+        }
+    }
+}
+
+# ---------------- Admin & Prerequisites ----------------
+function Assert-Prerequisites {
+    param([hashtable]$Config)
+    
+    $systemConfig = $Config.System
+    if (-not $systemConfig) { $systemConfig = @{} }
+    
+    # Check admin privileges
+    $requireAdmin = if ($systemConfig.RequireAdmin -ne $null) { $systemConfig.RequireAdmin } else { $true }
+    $autoElevate = if ($systemConfig.AutoElevate -ne $null) { $systemConfig.AutoElevate } else { $true }
+    
+    if ($requireAdmin) {
+        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+        
+        if (-not $isAdmin) {
+            if ($autoElevate) {
+                Write-Host "Administrator privileges required. Attempting to elevate..." -ForegroundColor Yellow
+                $arguments = @('-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"")
+                if ($DryRun) { $arguments += '-DryRun' }
+                if ($NoWelcome) { $arguments += '-NoWelcome' }
+                if ($ConfigPath) { $arguments += @('-ConfigPath', "`"$ConfigPath`"") }
+                
+                try {
+                    Start-Process 'powershell.exe' -ArgumentList $arguments -Verb 'RunAs' -WindowStyle 'Normal'
+                    exit 0
                 }
-                if ($source) { $persona = [ordered]@{ name=$pname; base=@($source.base); optional=@($source.optional) } }
-                else { $persona = [ordered]@{ name=$pname; base=@(); optional=@() } }
-
-                $options = @($catalog.Keys | Sort-Object)
-                $chosenBase = Out-SelectableList -Options $options -Title "Select BASE apps for '$pname'"
-                $persona.base = @($chosenBase)
-                $chosenOpt = Out-SelectableList -Options $options -Title "Select OPTIONAL apps for '$pname'"
-                $persona.optional = @($chosenOpt)
-
-                $path = Save-Persona ($persona | ConvertTo-Json | ConvertFrom-Json)
-                Write-Host "Saved persona to $path" -ForegroundColor Green
+                catch {
+                    Write-Warning "Failed to elevate privileges: $($_.Exception.Message)"
+                }
             }
-            '3' {
-                # Edit existing persona
-                $persons = Load-Personas
-                if ($persons.Count -eq 0) { Write-Host "No personas found."; continue }
-                Write-Host "`nSelect persona to edit:" -ForegroundColor Cyan
-                for ($i=0;$i -lt $persons.Count;$i++){ Write-Host (" [{0}] {1}" -f ($i+1), $persons[$i].name) }
-                $sel = Read-Host "Number"
-                if ($sel -and $sel -match '^\d+$' -and [int]$sel -ge 1 -and [int]$sel -le $persons.Count) {
-                    $persona = $persons[[int]$sel-1]
-                    $options = @($catalog.Keys | Sort-Object)
-                    $chosenBase = Out-SelectableList -Options $options -Title "Select BASE apps"
-                    if ($chosenBase.Count -gt 0) { $persona.base = @($chosenBase) }
-                    $chosenOpt = Out-SelectableList -Options $options -Title "Select OPTIONAL apps"
-                    if ($chosenOpt.Count -gt 0) { $persona.optional = @($chosenOpt) }
-                    $path = Save-Persona ($persona | ConvertTo-Json | ConvertFrom-Json)
-                    Write-Host "Saved updates to $path" -ForegroundColor Green
-                } else { Write-Host "Invalid selection." }
+            
+            Show-Warning "This script should run as Administrator for best results. Some packages may prompt or fail."
+            if (-not (Confirm-Action "Continue without elevation?")) {
+                exit 1
             }
-            '4' {
-                # Manage catalog (add package)
-                Write-Host "`nAdd a package to catalog" -ForegroundColor Cyan
-                $name = Read-Host "Display name (e.g., 'Node.js LTS')"
-                $id   = Read-Host "winget ID (exact, e.g., 'OpenJS.NodeJS.LTS')"
-                if (-not $name -or -not $id) { Write-Host "Cancelled."; continue }
-                $catalog[$name] = $id
-                Save-Catalog $catalog
-                Write-Host "Added: $name -> $id"
-            }
-            '5' { Show-Catalog -Catalog $catalog }
-            '6' { Prompt-Exit; exit }
-            default { Write-Host "Invalid option." }
         }
     }
+    
+    # Check winget availability
+    $checkWinget = if ($systemConfig.CheckWingetAvailability -ne $null) { $systemConfig.CheckWingetAvailability } else { $true }
+    if ($checkWinget -and -not (Test-WingetAvailable)) {
+        Show-Error "winget (App Installer) not found. Install from Microsoft Store: 'App Installer', then re-run."
+        Wait-ForUser "Press Enter to exit..."
+        exit 1
+    }
+}
 
-} catch {
-    Write-Progress -Activity "Installing apps" -Completed
-    Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
-    Prompt-Exit
+# ---------------- Main Menu Logic ----------------
+function Invoke-MainMenu {
+    param(
+        [array]$Personas,
+        [hashtable]$Catalog,
+        [hashtable]$Config,
+        [PSCustomObject]$LogConfig
+    )
+    
+    $menuOptions = @(
+        "Install from persona",
+        "Create new persona", 
+        "Edit existing persona",
+        "Manage catalog (add package)",
+        "View catalog",
+        "Exit"
+    )
+    
+    while ($true) {
+        try {
+            $choice = Show-Menu -Title "Persona Installer v$Version" -Options $menuOptions
+            
+            switch ($choice) {
+                1 { Invoke-InstallPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
+                2 { Invoke-CreatePersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
+                3 { Invoke-EditPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
+                4 { Invoke-ManageCatalog -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
+                5 { Invoke-ViewCatalog -Catalog $Catalog -Config $Config }
+                6 { 
+                    Show-Success "Thank you for using Persona Installer!"
+                    break 
+                }
+                0 { Show-Warning "Invalid selection. Please choose 1-6." }
+            }
+        }
+        catch {
+            Write-ErrorLog -Message "Menu operation failed" -Exception $_.Exception -Config $LogConfig
+            Show-Error "An error occurred: $($_.Exception.Message)"
+            
+            if (-not (Confirm-Action "Continue with the application?" -Default 'Y')) {
+                break
+            }
+        }
+    }
+}
+
+function Invoke-InstallPersona {
+    param($Personas, $Catalog, $Config, $LogConfig)
+    
+    if ($Personas.Count -eq 0) {
+        Show-Warning "No personas found in $PersonaDir"
+        Wait-ForUser
+        return
+    }
+    
+    $selection = Show-PersonaList -Personas $Personas
+    if ($selection -eq 0) {
+        Show-Warning "Invalid persona selection."
+        return
+    }
+    
+    $persona = $Personas[$selection - 1]
+    Write-Log -Level 'INFO' -Message "Selected persona: $($persona.name)" -Config $LogConfig
+    
+    # Show persona details
+    Write-Host (Get-PersonaSummary -Persona $persona) -ForegroundColor Cyan
+    
+    # Select optional apps
+    $selectedOptional = @()
+    if ($persona.optional.Count -gt 0) {
+        $selectedOptional = Select-Apps -Apps $persona.optional -Title "Select optional apps for '$($persona.name)'"
+    }
+    
+    # Show installation summary and confirm
+    if (-not (Show-InstallationSummary -PersonaName $persona.name -BaseApps $persona.base -OptionalApps $selectedOptional -DryRun:$DryRun)) {
+        Show-Warning "Installation cancelled by user."
+        return
+    }
+    
+    # Perform installation
+    $installSettings = $Config.Installation
+    if (-not $installSettings) { $installSettings = @{} }
+    
+    $operation = Start-LoggedOperation -OperationName "InstallPersona-$($persona.name)" -Config $LogConfig
+    
+    try {
+        $result = Install-PersonaApps -Persona $persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -DryRun:$DryRun
+        Show-InstallationResults -Summary $result -ShowDetails:($Config.UI.ShowDetailedResults -eq $true)
+        
+        Write-InstallLog -AppName $persona.name -WingetId "persona" -Status "Completed" -Message "Persona installation finished" -Duration $result.Duration -Config $LogConfig
+    }
+    finally {
+        Stop-LoggedOperation -Operation $operation -Context @{ persona = $persona.name; total_apps = ($persona.base.Count + $selectedOptional.Count) }
+    }
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Wait-ForUser
+    }
+}
+
+function Invoke-CreatePersona {
+    param($Catalog, $Config, $LogConfig)
+    
+    $personaName = Read-Host "New persona name (alphanumeric, dashes, underscores)"
+    if ([string]::IsNullOrWhiteSpace($personaName)) {
+        Show-Warning "Operation cancelled."
+        return
+    }
+    
+    Write-Log -Level 'INFO' -Message "Creating new persona: $personaName" -Config $LogConfig
+    
+    try {
+        $personas = Load-Personas -PersonaDir $PersonaDir
+        $sourcePersona = $null
+        
+        if ($personas.Count -gt 0) {
+            if (Confirm-Action "Clone from existing persona?") {
+                $selection = Show-PersonaList -Personas $personas
+                if ($selection -gt 0) {
+                    $sourcePersona = $personas[$selection - 1]
+                }
+            }
+        }
+        
+        $catalogApps = @($Catalog.Keys | Sort-Object)
+        $newPersona = New-Persona -Name $personaName -CatalogApps $catalogApps -SourcePersona $sourcePersona
+        
+        $savedPath = Save-Persona -Persona $newPersona -PersonaDir $PersonaDir
+        Show-Success "Created persona '$personaName' at: $savedPath"
+        
+        Write-Log -Level 'INFO' -Message "Persona created successfully" -Context @{ persona_name = $personaName; base_apps = $newPersona.base.Count; optional_apps = $newPersona.optional.Count } -Config $LogConfig
+    }
+    catch {
+        Write-ErrorLog -Message "Failed to create persona" -Exception $_.Exception -Context @{ persona_name = $personaName } -Config $LogConfig
+        Show-Error "Failed to create persona: $($_.Exception.Message)"
+    }
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Wait-ForUser
+    }
+}
+
+function Invoke-EditPersona {
+    param($Personas, $Catalog, $Config, $LogConfig)
+    
+    if ($Personas.Count -eq 0) {
+        Show-Warning "No personas found to edit."
+        Wait-ForUser
+        return
+    }
+    
+    $selection = Show-PersonaList -Personas $Personas
+    if ($selection -eq 0) {
+        Show-Warning "Invalid persona selection."
+        return
+    }
+    
+    $persona = $Personas[$selection - 1]
+    Write-Log -Level 'INFO' -Message "Editing persona: $($persona.name)" -Config $LogConfig
+    
+    try {
+        $catalogApps = @($Catalog.Keys | Sort-Object)
+        $updatedPersona = Edit-Persona -Persona $persona -CatalogApps $catalogApps
+        
+        $savedPath = Save-Persona -Persona $updatedPersona -PersonaDir $PersonaDir
+        Show-Success "Updated persona '$($persona.name)' at: $savedPath"
+        
+        Write-Log -Level 'INFO' -Message "Persona updated successfully" -Context @{ persona_name = $persona.name } -Config $LogConfig
+    }
+    catch {
+        Write-ErrorLog -Message "Failed to edit persona" -Exception $_.Exception -Context @{ persona_name = $persona.name } -Config $LogConfig
+        Show-Error "Failed to edit persona: $($_.Exception.Message)"
+    }
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Wait-ForUser
+    }
+}
+
+function Invoke-ManageCatalog {
+    param($Catalog, $Config, $LogConfig)
+    
+    Write-Host "`nAdd a package to catalog" -ForegroundColor Cyan
+    $displayName = Read-Host "Display name (e.g., 'Node.js LTS')"
+    $wingetId = Read-Host "Winget ID (exact, e.g., 'OpenJS.NodeJS.LTS')"
+    
+    if ([string]::IsNullOrWhiteSpace($displayName) -or [string]::IsNullOrWhiteSpace($wingetId)) {
+        Show-Warning "Operation cancelled."
+        return
+    }
+    
+    Write-Log -Level 'INFO' -Message "Adding catalog entry" -Context @{ display_name = $displayName; winget_id = $wingetId } -Config $LogConfig
+    
+    try {
+        $updatedCatalog = Add-CatalogEntry -Catalog $Catalog -DisplayName $displayName -WingetId $wingetId
+        Save-Catalog -Catalog $updatedCatalog -CatalogPath $CatalogPath
+        
+        Write-Log -Level 'INFO' -Message "Catalog entry added successfully" -Context @{ display_name = $displayName; winget_id = $wingetId } -Config $LogConfig
+    }
+    catch {
+        Write-ErrorLog -Message "Failed to add catalog entry" -Exception $_.Exception -Context @{ display_name = $displayName; winget_id = $wingetId } -Config $LogConfig
+        Show-Error "Failed to add catalog entry: $($_.Exception.Message)"
+    }
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Wait-ForUser
+    }
+}
+
+function Invoke-ViewCatalog {
+    param($Catalog, $Config)
+    
+    Show-Catalog -Catalog $Catalog -DataDir $DataDir
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Wait-ForUser
+    }
+}
+
+# ---------------- Main Execution ----------------
+try {
+    # Load configuration
+    $config = Load-Configuration -ConfigPath $ConfigPath
+    
+    # Import modules
+    Import-PersonaModules -ModulesPath $ModulesDir
+    
+    # Initialize logging
+    $logConfig = Initialize-Logging -LogsDir $LogsDir
+    Write-Log -Level 'INFO' -Message "Persona Installer v$Version started" -Context @{ dry_run = $DryRun.IsPresent; config_path = $ConfigPath } -Config $logConfig
+    
+    # Check prerequisites
+    Assert-Prerequisites -Config $config
+    
+    # Show welcome message
+    if (-not $NoWelcome -and $config.UI.ShowWelcome -ne $false) {
+        Show-WelcomeMessage -Version $Version -DryRun:$DryRun
+    }
+    
+    # Load data
+    Write-Verbose "Loading catalog and personas..."
+    $catalog = Load-Catalog -CatalogPath $CatalogPath
+    $personas = Load-Personas -PersonaDir $PersonaDir
+    
+    Write-Log -Level 'INFO' -Message "Data loaded" -Context @{ catalog_entries = $catalog.Count; personas_count = $personas.Count } -Config $logConfig
+    
+    # Start main menu
+    Invoke-MainMenu -Personas $personas -Catalog $catalog -Config $config -LogConfig $logConfig
+    
+    Write-Log -Level 'INFO' -Message "Application completed successfully" -Config $logConfig
+}
+catch {
+    try {
+        if ($logConfig) {
+            Write-ErrorLog -Message "Application error" -Exception $_.Exception -Config $logConfig
+        }
+    } catch {}
+    
+    Show-Error "Application error: $($_.Exception.Message)" -Exception $_.Exception
+    Wait-ForUser "Press Enter to exit..."
     exit 1
 }
-
-# Normal end (should not reach here due to exit in menu)
+finally {
+    # Cleanup
+    try {
+        if ($logConfig) {
+            Stop-Logging -Config $logConfig
+        }
+    } catch {
+        Write-Warning "Error during cleanup: $($_.Exception.Message)"
+    }
+}

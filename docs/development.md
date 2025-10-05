@@ -1,126 +1,290 @@
-# Development Guide
+# Development Guide - v1.1.0
 
 This document is for advanced users and contributors who want to understand and extend **Persona Installer**.
 
 ---
 
-## 🔹 Script Structure
+## 🔹 Architecture Overview (v1.1.0)
 
+The application has been completely refactored into a modular architecture:
+
+### **Core Modules**
 - **Main.ps1** (in `scripts/`)  
-  - Entry point with interactive menu
-  - Handles elevation, DryRun, transcript logging
-  - Loads catalog & personas
-  - Provides menu options (install, create/edit persona, manage/view catalog, exit)
+  - Entry point and orchestration (180 lines, down from 314)
+  - Handles configuration loading, module imports, and main menu
+  - Coordinates between modules for complex operations
 
-- **data/catalog.json**  
-  - Master list of apps (friendly name → winget ID)
+- **PersonaManager.psm1** (`scripts/modules/`)  
+  - Persona CRUD operations (Create, Read, Update, Delete)
+  - Validation of persona structure and naming
+  - Interactive persona editing with user selection
 
-- **data/personas/*.json**  
-  - Persona profiles (base apps + optional apps)
+- **CatalogManager.psm1** (`scripts/modules/`)  
+  - Catalog loading, saving, and management
+  - Winget ID validation and app search functionality
+  - Import/export capabilities and statistics
 
-- **logs/**  
-  - Per-app install logs (`<AppName>.log`)
-  - Session transcript logs (`session-YYYYMMDD-HHMMSS.txt`)
+- **InstallEngine.psm1** (`scripts/modules/`)  
+  - Core installation logic with retry mechanisms
+  - App installation status checking and verification
+  - Parallel installation support (prepared for future)
 
----
+- **UIHelper.psm1** (`scripts/modules/`)  
+  - User interface utilities and consistent formatting
+  - Cross-platform app selection (GridView + console fallback)
+  - Progress indicators and user messaging
 
-## 🔹 Main Script Flow
+- **Logger.psm1** (`scripts/modules/`)  
+  - Structured JSON logging with performance metrics
+  - Session transcript management and log rotation
+  - Error tracking and performance analysis
 
-1. **Startup**
-   - Ensures Administrator mode (relaunches with `-NoExit` if needed)
-   - Starts transcript logging
-   - Loads catalog as a hashtable
-   - Loads persona JSONs into memory
-
-2. **Menu Options**
-   - `1) Install from persona` → choose persona, select optional apps, confirm, run install loop
-   - `2) Create new persona` → build new JSON (clone or fresh)
-   - `3) Edit existing persona` → modify base/optional apps
-   - `4) Manage catalog` → add new package (name + winget ID)
-   - `5) View catalog` → print/export to CSV
-   - `6) Exit` → stop transcript, exit cleanly
-
-3. **Install Logic**
-   - Skips already installed apps (via `winget list` check)
-   - Runs `winget install --id <id> -e --silent`
-   - Retries without `--silent` if it fails
-   - Logs every command to `logs/<AppName>.log`
-
-4. **DryRun Mode**
-   - `-DryRun` flag bypasses installs
-   - Prints what *would* be installed
+### **Configuration System**
+- **config/Settings.psd1**  
+  - Externalized configuration for all settings
+  - Feature flags for future functionality
+  - Environment-specific overrides support
 
 ---
 
-## 🔹 Development Workflow
+## 🔹 New Development Workflow (v1.1.0)
 
-### 1. Run Locally
+### 1. Local Development Setup
 ```powershell
-# Preview only
-.\Main.ps1 -DryRun
+# Clone and setup
+git clone https://github.com/24Skater/persona-installer.git
+cd persona-installer
 
-# Full run
-.\Main.ps1
+# Test the modular structure
+.\scripts\Main.ps1 -DryRun -Verbose
+
+# Load individual modules for testing
+Import-Module .\scripts\modules\PersonaManager.psm1 -Force
+Load-Personas -PersonaDir .\data\personas\
 ```
 
-### 2. Add New Catalog Entries
+### 2. Module Development
+Each module follows consistent patterns:
 ```powershell
-winget search <app>
-# Copy the Id field to catalog.json
+# Module template structure
+<#
+ModuleName.psm1 - Module description
+Brief explanation of module responsibilities
+#>
+
+function Public-Function {
+    <#
+    .SYNOPSIS
+        Brief description
+    .DESCRIPTION
+        Detailed description
+    .PARAMETER ParamName
+        Parameter description
+    .OUTPUTS
+        Return type description
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ParamName
+    )
+    
+    Write-Verbose "Function operation details"
+    # Implementation
+}
+
+# Export only public functions
+Export-ModuleMember -Function Public-Function
 ```
 
-### 3. Add/Edit Personas
-- Edit JSON in `data/personas/`
-- Or use menu option `2)` or `3)`
-
-### 4. Test with PSScriptAnalyzer
+### 3. Configuration Management
 ```powershell
-Invoke-ScriptAnalyzer -Path ./scripts -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+# Load configuration in your functions
+$config = Import-PowerShellDataFile -Path $configPath
+$installSettings = $config.Installation
+
+# Access settings with defaults
+$maxRetries = if ($installSettings.MaxRetries) { $installSettings.MaxRetries } else { 3 }
+```
+
+### 4. Logging Integration
+```powershell
+# Initialize logging
+$logConfig = Initialize-Logging -LogsDir $LogsDir
+
+# Log with context
+Write-Log -Level 'INFO' -Message "Operation started" -Context @{ 
+    operation = 'InstallPersona'
+    persona = $personaName 
+} -Config $logConfig
+
+# Performance logging
+$operation = Start-LoggedOperation -OperationName "MyOperation" -Config $logConfig
+try {
+    # Your operation here
+} finally {
+    Stop-LoggedOperation -Operation $operation
+}
 ```
 
 ---
 
-## 🔹 GitHub Actions (CI/CD)
+## 🔹 Testing Strategy
 
-Two workflows live under `.github/workflows/`:
+### Unit Testing Preparation
+The modular structure enables comprehensive testing:
 
-- **powershell-lint.yml**  
-  Runs PSScriptAnalyzer on every push/PR.  
-  - Shows warnings but only fails on errors.  
-  - Uploads results as artifact.  
+```powershell
+# Test individual modules
+Import-Module .\scripts\modules\PersonaManager.psm1 -Force
 
-- **package-release.yml**  
-  Runs on version tags (e.g., `v1.0.0`).  
-  - Zips repo contents (excluding `.git` and logs).  
-  - Creates a GitHub Release with the zip attached.  
+# Mock dependencies for testing
+$mockCatalog = @{ "Test App" = "Test.App.ID" }
+$testPersona = New-Persona -Name "test" -CatalogApps @("Test App")
+```
 
-### Badges
-Add to README for visibility:
-```markdown
-[![PowerShell Lint](https://github.com/24Skater/persona-installer/actions/workflows/powershell-lint.yml/badge.svg)](https://github.com/24Skater/persona-installer/actions/workflows/powershell-lint.yml)
-[![Release](https://img.shields.io/github/v/release/24Skater/persona-installer)](https://github.com/24Skater/persona-installer/releases)
+### Integration Testing
+```powershell
+# Test full workflow with mocks
+$testConfig = @{
+    Installation = @{ MaxRetries = 1; SilentInstallFirst = $false }
+    Logging = @{ DefaultLevel = 'DEBUG' }
+}
+
+# Test configuration loading
+$config = Load-Configuration -ConfigPath ".\test-config.psd1"
 ```
 
 ---
 
-## 🔹 Debugging Tips
+## 🔹 Module Responsibilities
 
-- Check logs in `logs/`
-- Use `-Verbose` for detailed PowerShell output:
-  ```powershell
-  .\Main.ps1 -DryRun -Verbose
-  ```
-- Use `Write-Debug` statements for temporary debugging (enable with `$DebugPreference='Continue'`)
+### **PersonaManager.psm1**
+- `Load-Personas`: Read all persona JSON files
+- `Save-Persona`: Write persona with validation
+- `New-Persona`: Interactive persona creation
+- `Edit-Persona`: Modify existing personas
+- `Confirm-PersonaName`: Validate naming conventions
+
+### **CatalogManager.psm1**
+- `Load-Catalog`: Parse catalog JSON with PS version compatibility
+- `Save-Catalog`: Write catalog to disk
+- `Add-CatalogEntry`: Add new apps with validation
+- `Show-Catalog`: Display with optional export
+- `Test-WingetId`: Validate package IDs
+
+### **InstallEngine.psm1**
+- `Install-PersonaApps`: Orchestrate full persona installation
+- `Install-App`: Single app installation with retry
+- `Test-AppInstalled`: Check installation status
+- `Show-InstallationResults`: Display formatted results
+
+### **UIHelper.psm1**
+- `Select-Apps`: Cross-platform app selection interface
+- `Show-Menu`: Consistent menu presentation
+- `Show-Progress`: Installation progress with bars
+- `Show-WelcomeMessage`: Branded application startup
+
+### **Logger.psm1**
+- `Initialize-Logging`: Setup logging system
+- `Write-Log`: Structured logging with JSON output
+- `Start-LoggedOperation`/`Stop-LoggedOperation`: Performance tracking
+- `Clear-OldLogs`: Automatic log cleanup
 
 ---
 
-## 🔹 Future Improvements
+## 🔹 Extension Points
 
-- GUI wrapper (WinForms or WPF) for users who dislike the console
-- More personas (gaming, design, education)
-- Better error reporting (summarize failed apps at the end)
-- Import/export personas via a community repo
+### Adding New Modules
+1. Create `scripts/modules/YourModule.psm1`
+2. Follow the established patterns and documentation
+3. Add to module loading in `Main.ps1`
+4. Export only public functions
+
+### Configuration Extensions
+Add new sections to `config/Settings.psd1`:
+```powershell
+YourFeature = @{
+    Setting1 = 'DefaultValue'
+    Setting2 = $true
+}
+```
+
+### New Menu Options
+Extend the main menu in `Invoke-MainMenu`:
+```powershell
+$menuOptions += "Your New Option"
+# Add corresponding switch case
+```
 
 ---
 
-Happy hacking! 🚀
+## 🔹 Performance Considerations
+
+### Module Loading
+- Modules are loaded once at startup
+- Use `-DisableNameChecking` to avoid cmdlet conflicts
+- Lazy loading for optional modules (future enhancement)
+
+### Memory Management
+- Large catalogs are loaded as hashtables for O(1) lookup
+- JSON parsing handles both PS 5.1 and 7.x efficiently
+- Log files use streaming for large outputs
+
+### Installation Optimization
+- Built-in retry logic with exponential backoff
+- Prepared for parallel installation (future feature)
+- Installation status caching to avoid redundant checks
+
+---
+
+## 🔹 Debugging and Troubleshooting
+
+### Verbose Mode
+```powershell
+.\Main.ps1 -DryRun -Verbose
+```
+
+### Module-Level Debugging
+```powershell
+# Enable verbose for specific modules
+Import-Module .\scripts\modules\PersonaManager.psm1 -Force -Verbose
+
+# Test individual functions
+Load-Personas -PersonaDir .\data\personas\ -Verbose
+```
+
+### Log Analysis
+- Session logs: `logs/session-YYYYMMDD-HHMMSS.txt`
+- Structured logs contain JSON for easy parsing
+- Performance metrics help identify bottlenecks
+
+### Configuration Debugging
+```powershell
+# Test configuration loading
+$config = Load-Configuration -ConfigPath .\scripts\config\Settings.psd1
+$config | ConvertTo-Json -Depth 5
+```
+
+---
+
+## 🔹 Future Roadmap
+
+### Phase 2 (v1.2.0)
+- Dependency management system
+- Installation queueing and scheduling
+- Enhanced persona recommendations
+
+### Phase 3 (v1.3.0)
+- GUI wrapper using WPF/WinForms
+- Community persona repository
+- Rollback and snapshot functionality
+
+### Phase 4 (v1.4.0)
+- Comprehensive testing suite
+- Performance optimization
+- Enterprise policy management
+
+---
+
+Happy hacking with the new modular architecture! 🚀
