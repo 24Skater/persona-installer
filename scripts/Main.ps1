@@ -14,7 +14,7 @@ param(
 )
 
 # Version
-$Version = "1.1.0"
+$Version = "1.2.0"
 
 $ErrorActionPreference = "Stop"
 
@@ -55,7 +55,7 @@ function Load-Configuration {
 function Import-PersonaModules {
     param([string]$ModulesPath)
     
-    $modules = @('PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
+    $modules = @('PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger', 'DependencyManager', 'PersonaRecommendationEngine', 'EnhancedProgressManager')
     
     foreach ($module in $modules) {
         $modulePath = Join-Path $ModulesPath "$module.psm1"
@@ -132,12 +132,13 @@ function Invoke-MainMenu {
     )
     
     $menuOptions = @(
-        "Install from persona",
-        "Create new persona", 
-        "Edit existing persona",
-        "Manage catalog (add package)",
-        "View catalog",
-        "Exit"
+        "🤖 Smart persona recommendations",
+        "📦 Install from persona",
+        "➕ Create new persona", 
+        "✏️  Edit existing persona",
+        "🛠️  Manage catalog (add package)",
+        "📋 View catalog",
+        "❌ Exit"
     )
     
     while ($true) {
@@ -145,16 +146,17 @@ function Invoke-MainMenu {
             $choice = Show-Menu -Title "Persona Installer v$Version" -Options $menuOptions
             
             switch ($choice) {
-                1 { Invoke-InstallPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
-                2 { Invoke-CreatePersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
-                3 { Invoke-EditPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
-                4 { Invoke-ManageCatalog -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
-                5 { Invoke-ViewCatalog -Catalog $Catalog -Config $Config }
-                6 { 
+                1 { Invoke-SmartRecommendations -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
+                2 { Invoke-InstallPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
+                3 { Invoke-CreatePersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
+                4 { Invoke-EditPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
+                5 { Invoke-ManageCatalog -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
+                6 { Invoke-ViewCatalog -Catalog $Catalog -Config $Config }
+                7 { 
                     Show-Success "Thank you for using Persona Installer!"
                     break 
                 }
-                0 { Show-Warning "Invalid selection. Please choose 1-6." }
+                0 { Show-Warning "Invalid selection. Please choose 1-7." }
             }
         }
         catch {
@@ -166,6 +168,200 @@ function Invoke-MainMenu {
             }
         }
     }
+}
+
+function Invoke-SmartRecommendations {
+    param($Personas, $Catalog, $Config, $LogConfig)
+    
+    if (-not $Config.Features.SmartRecommendations) {
+        Show-Warning "Smart recommendations are disabled in configuration."
+        Wait-ForUser
+        return
+    }
+    
+    Write-Host "`n🤖 Analyzing your system..." -ForegroundColor Cyan
+    
+    Write-Log -Level 'INFO' -Message "Starting smart persona recommendations" -Config $LogConfig
+    
+    try {
+        # Perform system analysis
+        $systemAnalysis = Get-SystemAnalysis
+        Write-Log -Level 'INFO' -Message "System analysis completed" -Context @{ 
+            user_type = $systemAnalysis.UserProfile.UserType
+            memory_gb = $systemAnalysis.Hardware.TotalMemoryGB
+            dev_tools = $systemAnalysis.Software.Development.Count
+        } -Config $LogConfig
+        
+        # Get persona recommendations
+        $recommendations = Get-PersonaRecommendations -SystemAnalysis $systemAnalysis
+        
+        # Show recommendations to user
+        Show-PersonaRecommendations -Recommendations $recommendations -SystemAnalysis $systemAnalysis -ShowSystemInfo
+        
+        # Ask if user wants to install a recommended persona
+        if ($recommendations.Count -gt 0) {
+            Write-Host ""
+            $installChoice = Read-Host "Would you like to install one of these recommended personas? (Y/N)"
+            
+            if ($installChoice -match '^(y|yes)$') {
+                Write-Host "`nWhich persona would you like to install?"
+                for ($i = 0; $i -lt [Math]::Min($recommendations.Count, 5); $i++) {
+                    Write-Host " [$($i + 1)] $($recommendations[$i].PersonaName)" -ForegroundColor White
+                }
+                
+                $selection = Read-Host "Enter number (1-$([Math]::Min($recommendations.Count, 5)))"
+                
+                if ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le [Math]::Min($recommendations.Count, 5)) {
+                    $selectedPersonaName = $recommendations[[int]$selection - 1].PersonaName
+                    
+                    # Find the actual persona object
+                    $selectedPersona = $Personas | Where-Object { $_.name -eq $selectedPersonaName } | Select-Object -First 1
+                    
+                    if ($selectedPersona) {
+                        Write-Log -Level 'INFO' -Message "User selected recommended persona" -Context @{ persona = $selectedPersonaName } -Config $LogConfig
+                        
+                        # Proceed with installation using enhanced dependency checking
+                        Invoke-InstallPersonaWithDependencies -Persona $selectedPersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    } else {
+                        Show-Error "Persona '$selectedPersonaName' not found."
+                    }
+                } else {
+                    Show-Warning "Invalid selection."
+                }
+            }
+        }
+        
+    } catch {
+        Write-ErrorLog -Message "Smart recommendations failed" -Exception $_.Exception -Config $LogConfig
+        Show-Error "Failed to generate recommendations: $($_.Exception.Message)"
+    }
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Wait-ForUser
+    }
+}
+
+function Invoke-InstallPersonaWithDependencies {
+    param($Persona, $Catalog, $Config, $LogConfig)
+    
+    Write-Host "`n🔍 Analyzing dependencies..." -ForegroundColor Yellow
+    
+    # Check if we should use enhanced catalog or convert legacy
+    $enhancedCatalog = $Catalog
+    if ($Catalog.Values | Where-Object { $_ -is [string] }) {
+        Write-Verbose "Converting legacy catalog format"
+        $enhancedCatalog = Convert-LegacyCatalog -LegacyCatalog $Catalog
+        $enhancedCatalog = Add-CommonDependencies -Catalog $enhancedCatalog
+    }
+    
+    # Combine base and optional apps selection
+    $selectedOptional = @()
+    if ($Persona.optional.Count -gt 0) {
+        $selectedOptional = Select-Apps -Apps $Persona.optional -Title "Select optional apps for '$($Persona.name)'"
+    }
+    
+    $allApps = @($Persona.base) + @($selectedOptional)
+    
+    # Resolve dependencies
+    if ($Config.Features.DependencyChecking) {
+        $dependencyAnalysis = Resolve-AppDependencies -AppList $allApps -Catalog $enhancedCatalog
+        
+        $canProceed = Show-DependencyAnalysis -Analysis $dependencyAnalysis -ShowDetails
+        
+        if (-not $canProceed) {
+            $continue = Read-Host "Dependencies have issues. Continue anyway? (Y/N)"
+            if ($continue -notmatch '^(y|yes)$') {
+                Show-Warning "Installation cancelled due to dependency issues."
+                return
+            }
+        }
+        
+        # Use resolved installation order
+        $finalAppList = $dependencyAnalysis.InstallationOrder
+    } else {
+        $finalAppList = $allApps
+    }
+    
+    # Show installation summary
+    if (-not (Show-InstallationSummary -PersonaName $Persona.name -BaseApps $finalAppList -OptionalApps @() -DryRun:$DryRun)) {
+        Show-Warning "Installation cancelled by user."
+        return
+    }
+    
+    # Enhanced installation with progress tracking
+    if ($Config.Features.EnhancedProgress) {
+        Invoke-InstallWithEnhancedProgress -AppList $finalAppList -Catalog $enhancedCatalog -Config $Config -LogConfig $LogConfig
+    } else {
+        # Fallback to standard installation
+        $installSettings = $Config.Installation
+        if (-not $installSettings) { $installSettings = @{} }
+        
+        $result = Install-PersonaApps -Persona $Persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -DryRun:$DryRun
+        Show-InstallationResults -Summary $result -ShowDetails:($Config.UI.ShowDetailedResults -eq $true)
+    }
+}
+
+function Invoke-InstallWithEnhancedProgress {
+    param($AppList, $Catalog, $Config, $LogConfig)
+    
+    Write-Log -Level 'INFO' -Message "Starting enhanced installation" -Context @{ app_count = $AppList.Count } -Config $LogConfig
+    
+    # Initialize enhanced progress manager
+    $progressManager = Initialize-ProgressManager -TotalItems $AppList.Count -Title "Installing Applications" -ShowETA -ShowSpeed
+    
+    $successful = 0
+    $failed = 0
+    $skipped = 0
+    
+    try {
+        foreach ($appName in $AppList) {
+            if (-not $Catalog.ContainsKey($appName)) {
+                Update-Progress -ProgressManager $progressManager -CurrentItem $appName -Status "Skipped" -ItemResult ([PSCustomObject]@{ Status = 'NotInCatalog' })
+                $skipped++
+                continue
+            }
+            
+            $appInfo = $Catalog[$appName]
+            $wingetId = if ($appInfo -is [string]) { $appInfo } else { $appInfo.id }
+            
+            Update-Progress -ProgressManager $progressManager -CurrentItem $appName -Status "Installing"
+            
+            $logFileName = ($appName -replace '[^\w\-\.]', '_') + '.log'
+            $logPath = Join-Path $LogsDir $logFileName
+            
+            $installResult = Install-App -DisplayName $appName -WingetId $wingetId -LogPath $logPath -Settings $Config.Installation -DryRun:$DryRun
+            
+            Update-Progress -ProgressManager $progressManager -CurrentItem $appName -Status $installResult.Status -ItemResult $installResult
+            
+            switch ($installResult.Status) {
+                'Success' { $successful++ }
+                'AlreadyInstalled' { $skipped++ }
+                'DryRun' { $skipped++ }
+                default { $failed++ }
+            }
+            
+            Write-InstallLog -AppName $appName -WingetId $wingetId -Status $installResult.Status -Message $installResult.Message -Duration $installResult.Duration -Config $LogConfig
+        }
+        
+    } catch {
+        Write-ErrorLog -Message "Enhanced installation error" -Exception $_.Exception -Config $LogConfig
+        Cancel-Progress -ProgressManager $progressManager -Reason $_.Exception.Message
+        throw
+    }
+    
+    # Complete progress and show summary
+    Complete-Progress -ProgressManager $progressManager -ShowSummary
+    
+    Write-Host "`n=== Installation Complete ===" -ForegroundColor Green
+    Write-Host "✅ Successful: $successful" -ForegroundColor Green
+    Write-Host "⏭️  Skipped: $skipped" -ForegroundColor Gray
+    Write-Host "❌ Failed: $failed" -ForegroundColor Red
+    
+    Write-Log -Level 'INFO' -Message "Enhanced installation completed" -Context @{ 
+        successful = $successful
+        failed = $failed 
+        skipped = $skipped
+    } -Config $LogConfig
 }
 
 function Invoke-InstallPersona {

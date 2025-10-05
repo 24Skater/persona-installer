@@ -108,8 +108,14 @@
     
     # Feature Flags
     Features = @{
-        # Enable dependency checking (future feature)
-        DependencyChecking = $false
+        # Enable dependency checking (v1.2.0 feature)
+        DependencyChecking = $true
+        
+        # Enable smart persona recommendations (v1.2.0 feature)
+        SmartRecommendations = $true
+        
+        # Enable enhanced progress indicators (v1.2.0 feature)
+        EnhancedProgress = $true
         
         # Enable installation queueing (future feature)
         InstallationQueue = $false

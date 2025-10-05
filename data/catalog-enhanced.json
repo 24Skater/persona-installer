@@ -1,0 +1,460 @@
+{
+  "Git": {
+    "id": "Git.Git",
+    "category": "Development",
+    "description": "Distributed version control system",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "VS Code": {
+    "id": "Microsoft.VisualStudioCode",
+    "category": "Development", 
+    "description": "Lightweight code editor with extensions",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "GitHub Desktop": {
+    "id": "GitHub.GitHubDesktop",
+    "category": "Development",
+    "description": "GUI for Git and GitHub",
+    "dependencies": ["Git"],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Google Chrome": {
+    "id": "Google.Chrome",
+    "category": "Browser",
+    "description": "Web browser by Google",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Notepad++": {
+    "id": "Notepad++.Notepad++",
+    "category": "Utilities",
+    "description": "Advanced text editor",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "PowerShell 7": {
+    "id": "Microsoft.PowerShell",
+    "category": "Development",
+    "description": "Cross-platform automation framework",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "VLC": {
+    "id": "VideoLAN.VLC",
+    "category": "Media",
+    "description": "Media player for various formats",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "WhatsApp": {
+    "id": "WhatsApp.WhatsApp",
+    "category": "Communication",
+    "description": "Messaging application",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Zoom": {
+    "id": "Zoom.Zoom",
+    "category": "Communication",
+    "description": "Video conferencing platform",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Steam": {
+    "id": "Valve.Steam",
+    "category": "Gaming",
+    "description": "Gaming platform and store",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {
+      "min_disk_space_gb": 1
+    }
+  },
+  "Epic Games Launcher": {
+    "id": "EpicGames.EpicGamesLauncher",
+    "category": "Gaming",
+    "description": "Epic Games store and launcher",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Ubisoft Connect": {
+    "id": "Ubisoft.Connect",
+    "category": "Gaming",
+    "description": "Ubisoft games launcher",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "WorshipTools Presenter": {
+    "id": "WorshipTools.Presenter",
+    "category": "Utilities",
+    "description": "Presentation software for worship",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Microsoft 365 (Office)": {
+    "id": "Microsoft.Office",
+    "category": "Business",
+    "description": "Office productivity suite",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {
+      "min_memory_gb": 2,
+      "min_disk_space_gb": 3
+    }
+  },
+  "Adobe Creative Cloud": {
+    "id": "Adobe.CreativeCloud",
+    "category": "Creative",
+    "description": "Creative software suite",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {
+      "min_memory_gb": 8,
+      "min_disk_space_gb": 5
+    }
+  },
+  "Python 3 (latest)": {
+    "id": "Python.Python.3",
+    "category": "Development",
+    "description": "Python programming language",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Node.js (LTS)": {
+    "id": "OpenJS.NodeJS.LTS",
+    "category": "Development",
+    "description": "JavaScript runtime environment",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Node.js": {
+    "id": "OpenJS.NodeJS",
+    "category": "Development",
+    "description": "JavaScript runtime (latest)",
+    "dependencies": [],
+    "conflicts": ["Node.js (LTS)"],
+    "system_requirements": {}
+  },
+  "GitHub CLI": {
+    "id": "GitHub.cli",
+    "category": "Development",
+    "description": "Command line interface for GitHub",
+    "dependencies": ["Git"],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Python 3 (specific)": {
+    "id": "Python.Python.3.12",
+    "category": "Development",
+    "description": "Python 3.12 specific version",
+    "dependencies": [],
+    "conflicts": ["Python 3 (latest)"],
+    "system_requirements": {}
+  },
+  "Docker Desktop": {
+    "id": "Docker.DockerDesktop",
+    "category": "Development",
+    "description": "Containerization platform",
+    "dependencies": ["WSL2"],
+    "conflicts": [],
+    "system_requirements": {
+      "min_windows_version": "10.0.19041",
+      "min_memory_gb": 4,
+      "requires_admin": true
+    }
+  },
+  "Docker CLI": {
+    "id": "Docker.DockerCLI",
+    "category": "Development",
+    "description": "Docker command line interface",
+    "dependencies": ["Docker Desktop"],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  ".NET SDK": {
+    "id": "Microsoft.dotnet",
+    "category": "Development",
+    "description": ".NET development framework",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Visual Studio 2022 Community": {
+    "id": "Microsoft.VisualStudio.2022.Community",
+    "category": "Development",
+    "description": "Integrated development environment",
+    "dependencies": [".NET SDK"],
+    "conflicts": [],
+    "system_requirements": {
+      "min_memory_gb": 4,
+      "min_disk_space_gb": 4
+    }
+  },
+  "Postman": {
+    "id": "Postman.Postman",
+    "category": "Development",
+    "description": "API development platform",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "DBeaver (Community)": {
+    "id": "DBeaver.DBeaver.Community",
+    "category": "Development",
+    "description": "Database management tool",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Azure CLI": {
+    "id": "Microsoft.AzureCLI",
+    "category": "Development",
+    "description": "Azure command line interface",
+    "dependencies": ["PowerShell 7"],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "AWS CLI v2": {
+    "id": "Amazon.AWSCLI",
+    "category": "Development",
+    "description": "Amazon Web Services CLI",
+    "dependencies": ["PowerShell 7"],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Google Cloud SDK": {
+    "id": "Google.CloudSDK",
+    "category": "Development",
+    "description": "Google Cloud Platform tools",
+    "dependencies": ["Python 3 (latest)"],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Java (Microsoft OpenJDK 17)": {
+    "id": "Microsoft.OpenJDK.17",
+    "category": "Development",
+    "description": "Java development kit",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Maven": {
+    "id": "Apache.Maven",
+    "category": "Development",
+    "description": "Java build automation tool",
+    "dependencies": ["Java (Microsoft OpenJDK 17)"],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Gradle": {
+    "id": "Gradle.Gradle",
+    "category": "Development",
+    "description": "Build automation tool",
+    "dependencies": ["Java (Microsoft OpenJDK 17)"],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Go (Golang)": {
+    "id": "GoLang.Go",
+    "category": "Development",
+    "description": "Go programming language",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Rust (rustup)": {
+    "id": "Rustlang.Rustup",
+    "category": "Development",
+    "description": "Rust programming language",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Yarn": {
+    "id": "Yarn.Yarn",
+    "category": "Development",
+    "description": "Package manager for Node.js",
+    "dependencies": ["Node.js (LTS)"],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Slack": {
+    "id": "SlackTechnologies.Slack",
+    "category": "Communication",
+    "description": "Team collaboration platform",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Microsoft Teams": {
+    "id": "Microsoft.Teams",
+    "category": "Communication",
+    "description": "Team collaboration platform",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Power BI Desktop": {
+    "id": "Microsoft.PowerBI",
+    "category": "Business",
+    "description": "Business intelligence tool",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {
+      "min_memory_gb": 2
+    }
+  },
+  "Tableau Public": {
+    "id": "Tableau.TableauPublic",
+    "category": "Business",
+    "description": "Data visualization tool",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {
+      "min_memory_gb": 2
+    }
+  },
+  "Adobe Acrobat Reader": {
+    "id": "Adobe.Acrobat.Reader.64-bit",
+    "category": "Business",
+    "description": "PDF reader and editor",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Citrix Workspace": {
+    "id": "Citrix.Workspace",
+    "category": "Business",
+    "description": "Virtual application platform",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "7-Zip": {
+    "id": "7zip.7zip",
+    "category": "Utilities",
+    "description": "File archiver with high compression",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Everything Search": {
+    "id": "voidtools.Everything",
+    "category": "Utilities",
+    "description": "File search engine",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Rufus": {
+    "id": "Rufus.Rufus",
+    "category": "Utilities",
+    "description": "USB/DVD download tool",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Ventoy": {
+    "id": "Ventoy.Ventoy",
+    "category": "Utilities",
+    "description": "Bootable USB solution",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "PuTTY": {
+    "id": "PuTTY.PuTTY",
+    "category": "Utilities",
+    "description": "SSH and telnet client",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Nmap": {
+    "id": "Insecure.Nmap",
+    "category": "Security",
+    "description": "Network discovery and security auditing",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Wireshark": {
+    "id": "WiresharkFoundation.Wireshark",
+    "category": "Security",
+    "description": "Network protocol analyzer",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Sysinternals Suite (Store)": {
+    "id": "9P7KNL5RWT25",
+    "category": "Utilities",
+    "description": "Windows system utilities",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Burp Suite Community": {
+    "id": "PortSwigger.BurpSuiteCommunity",
+    "category": "Security",
+    "description": "Web application security testing",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {
+      "min_memory_gb": 2
+    }
+  },
+  "OWASP ZAP": {
+    "id": "OWASP.ZAP",
+    "category": "Security",
+    "description": "Web application security scanner",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "Ghidra": {
+    "id": "NSA.Ghidra",
+    "category": "Security",
+    "description": "Software reverse engineering suite",
+    "dependencies": ["Java (Microsoft OpenJDK 17)"],
+    "conflicts": [],
+    "system_requirements": {
+      "min_memory_gb": 4
+    }
+  },
+  "OpenSSL (Win64)": {
+    "id": "ShiningLight.OpenSSL.Light",
+    "category": "Security",
+    "description": "Cryptography toolkit",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {}
+  },
+  "WSL2": {
+    "id": "Microsoft.WSL",
+    "category": "Development",
+    "description": "Windows Subsystem for Linux",
+    "dependencies": [],
+    "conflicts": [],
+    "system_requirements": {
+      "min_windows_version": "10.0.19041",
+      "requires_admin": true
+    }
+  }
+}
