@@ -14,7 +14,7 @@ param(
 )
 
 # Version
-$Version = "1.2.0"
+$Version = "1.3.0"
 
 $ErrorActionPreference = "Stop"
 
@@ -53,11 +53,26 @@ function Load-Configuration {
 
 # ---------------- Module Loading ----------------
 function Import-PersonaModules {
-    param([string]$ModulesPath)
+    param([string]$ModulesPath, [hashtable]$Config = @{})
     
-    $modules = @('PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
+    # Core modules (always load)
+    $coreModules = @('PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
     
-    foreach ($module in $modules) {
+    # Optional v1.2.0+ modules (load based on feature flags)
+    $optionalModules = @()
+    if ($Config.Features.DependencyChecking) {
+        $optionalModules += 'DependencyManager'
+    }
+    if ($Config.Features.SmartRecommendations) {
+        $optionalModules += 'PersonaRecommendationEngine'
+    }
+    if ($Config.Features.EnhancedProgress) {
+        $optionalModules += 'EnhancedProgressManager'
+    }
+    
+    $allModules = $coreModules + $optionalModules
+    
+    foreach ($module in $allModules) {
         $modulePath = Join-Path $ModulesPath "$module.psm1"
         if (Test-Path $modulePath) {
             try {
@@ -65,12 +80,21 @@ function Import-PersonaModules {
                 Write-Verbose "Imported module: $module"
             }
             catch {
-                Write-Error "Failed to import module '$module': $($_.Exception.Message)"
-                throw
+                # Optional modules can fail gracefully
+                if ($module -in $optionalModules) {
+                    Write-Warning "Optional module '$module' failed to load: $($_.Exception.Message)"
+                } else {
+                    Write-Error "Failed to import module '$module': $($_.Exception.Message)"
+                    throw
+                }
             }
         } else {
-            Write-Error "Module not found: $modulePath"
-            throw
+            if ($module -in $optionalModules) {
+                Write-Verbose "Optional module not found: $modulePath"
+            } else {
+                Write-Error "Module not found: $modulePath"
+                throw
+            }
         }
     }
 }
@@ -132,7 +156,16 @@ function Invoke-MainMenu {
         [PSCustomObject]$LogConfig
     )
     
-    $menuOptions = @(
+    # Build dynamic menu based on available features
+    $menuOptions = @()
+    
+    # Smart Recommendations (if feature enabled)
+    if ($Config.Features.SmartRecommendations) {
+        $menuOptions += "Smart persona recommendations"
+    }
+    
+    # Core menu options
+    $menuOptions += @(
         "Install from persona",
         "Create new persona", 
         "Edit existing persona",
@@ -145,17 +178,62 @@ function Invoke-MainMenu {
         try {
             $choice = Show-Menu -Title "Persona Installer v$Version" -Options $menuOptions
             
+            # Dynamic switch based on whether Smart Recommendations is first
+            $offset = if ($Config.Features.SmartRecommendations) { 0 } else { 1 }
+            
             switch ($choice) {
-                1 { Invoke-InstallPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
-                2 { Invoke-CreatePersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
-                3 { Invoke-EditPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
-                4 { Invoke-ManageCatalog -Catalog $Catalog -Config $Config -LogConfig $LogConfig }
-                5 { Invoke-ViewCatalog -Catalog $Catalog -Config $Config }
-                6 { 
-                    Write-Host "`nThank you for using Persona Installer!" -ForegroundColor Green
-                    break 
+                1 { 
+                    if ($offset -eq 0) {
+                        Invoke-SmartRecommendations -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    } else {
+                        Invoke-InstallPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    }
                 }
-                0 { Write-Host "Invalid selection. Please choose 1-6." -ForegroundColor Yellow }
+                2 { 
+                    if ($offset -eq 0) {
+                        Invoke-InstallPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    } else {
+                        Invoke-CreatePersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    }
+                }
+                3 { 
+                    if ($offset -eq 0) {
+                        Invoke-CreatePersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    } else {
+                        Invoke-EditPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    }
+                }
+                4 { 
+                    if ($offset -eq 0) {
+                        Invoke-EditPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    } else {
+                        Invoke-ManageCatalog -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    }
+                }
+                5 { 
+                    if ($offset -eq 0) {
+                        Invoke-ManageCatalog -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                    } else {
+                        Invoke-ViewCatalog -Catalog $Catalog -Config $Config
+                    }
+                }
+                6 { 
+                    if ($offset -eq 0) {
+                        Invoke-ViewCatalog -Catalog $Catalog -Config $Config
+                    } else {
+                        Write-Host "`nThank you for using Persona Installer!" -ForegroundColor Green
+                        break
+                    }
+                }
+                7 {
+                    if ($offset -eq 0) {
+                        Write-Host "`nThank you for using Persona Installer!" -ForegroundColor Green
+                        break
+        } else {
+                        Write-Host "Invalid selection. Please choose 1-6." -ForegroundColor Yellow
+                    }
+                }
+                0 { Write-Host "Invalid selection. Please choose 1-$($menuOptions.Count)." -ForegroundColor Yellow }
             }
         }
         catch {
@@ -167,6 +245,81 @@ function Invoke-MainMenu {
                 break
             }
         }
+    }
+}
+
+function Invoke-SmartRecommendations {
+    param($Personas, $Catalog, $Config, $LogConfig)
+    
+    Write-Log -Level 'INFO' -Message "Smart recommendations requested" -Config $LogConfig
+    
+    try {
+        # Analyze system
+        $systemAnalysis = Get-SystemAnalysis
+        
+        # Get recommendations (function generates recommendations internally based on system analysis)
+        $recommendations = Get-PersonaRecommendations -SystemAnalysis $systemAnalysis
+        
+        # Show recommendations
+        Show-PersonaRecommendations -Recommendations $recommendations -SystemAnalysis $systemAnalysis -ShowSystemInfo
+        
+        if ($recommendations.Count -eq 0) {
+            Write-Host "`nNo specific recommendations. All personas are available for selection." -ForegroundColor Yellow
+            Read-Host "Press Enter to continue"
+            return
+        }
+        
+        # Offer to install top recommendation
+        Write-Host "`nWould you like to install the top recommended persona?" -ForegroundColor Yellow
+        $install = Read-Host "Enter 'Y' to install, or any other key to return to menu"
+        
+        if ($install -match '^(y|yes)$') {
+            $topRecommendation = $recommendations[0]
+            $persona = $Personas | Where-Object { $_.name -eq $topRecommendation.PersonaName } | Select-Object -First 1
+            
+            if ($persona) {
+                Write-Log -Level 'INFO' -Message "Installing recommended persona: $($persona.name)" -Config $LogConfig
+                
+                # Show persona details
+                Write-Host (Get-PersonaSummary -Persona $persona) -ForegroundColor Cyan
+                
+                # Select optional apps
+                $selectedOptional = @()
+                if ($persona.optional.Count -gt 0) {
+                    $selectedOptional = Select-Apps -Apps $persona.optional -Title "Select optional apps for '$($persona.name)'"
+                }
+                
+                # Show installation summary and confirm
+                if (-not (Show-InstallationSummary -PersonaName $persona.name -BaseApps $persona.base -OptionalApps $selectedOptional -DryRun:$DryRun)) {
+                    Write-Host "Installation cancelled by user."
+                    return
+                }
+                
+                # Perform installation
+                $installSettings = $Config.Installation
+                if (-not $installSettings) { $installSettings = @{} }
+                
+                $operation = Start-LoggedOperation -OperationName "InstallPersona-$($persona.name)" -Config $LogConfig
+                
+                try {
+                    $result = Install-PersonaApps -Persona $persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -DryRun:$DryRun
+                    Show-InstallationResults -Summary $result -ShowDetails:($Config.UI.ShowDetailedResults -eq $true)
+                    
+                    Write-InstallLog -AppName $persona.name -WingetId "persona" -Status "Completed" -Message "Persona installation finished" -Duration $result.Duration -Config $LogConfig
+                }
+                finally {
+                    Stop-LoggedOperation -Operation $operation -Context @{ persona = $persona.name; total_apps = ($persona.base.Count + $selectedOptional.Count) }
+                }
+            }
+        }
+    }
+    catch {
+        Write-ErrorLog -Message "Smart recommendations failed" -Exception $_.Exception -Config $LogConfig
+        Write-Host "An error occurred during smart recommendations: $($_.Exception.Message)" -ForegroundColor Red
+    }
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Read-Host "Press Enter to continue"
     }
 }
 
@@ -348,8 +501,8 @@ try {
     # Load configuration
     $config = Load-Configuration -ConfigPath $ConfigPath
     
-    # Import modules (just the basic ones for now)
-    Import-PersonaModules -ModulesPath $ModulesDir
+    # Import modules (with feature flags from config)
+    Import-PersonaModules -ModulesPath $ModulesDir -Config $config
     
     # Initialize logging
     $logConfig = Initialize-Logging -LogsDir $LogsDir
