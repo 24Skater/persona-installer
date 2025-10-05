@@ -213,7 +213,7 @@ function Show-Catalog {
     $hasGridView = Get-Command Out-GridView -ErrorAction SilentlyContinue
     if ($hasGridView -and $items.Count -gt 0) {
         try { 
-            $items | Out-GridView -Title "Catalog (Name ↔ WingetId)" -Wait
+            $items | Out-GridView -Title "Catalog (Name - WingetId)" -Wait
         } 
         catch { 
             $hasGridView = $false 

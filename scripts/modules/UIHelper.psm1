@@ -241,12 +241,12 @@ function Show-InstallationSummary {
     
     if ($BaseApps.Count -gt 0) {
         Write-Host "`nBase apps ($($BaseApps.Count)):" -ForegroundColor Yellow
-        $BaseApps | ForEach-Object { Write-Host "  ✓ $_" -ForegroundColor Green }
+        $BaseApps | ForEach-Object { Write-Host "  + $_" -ForegroundColor Green }
     }
     
     if ($OptionalApps.Count -gt 0) {
         Write-Host "`nOptional apps ($($OptionalApps.Count)):" -ForegroundColor Yellow
-        $OptionalApps | ForEach-Object { Write-Host "  ✓ $_" -ForegroundColor Green }
+        $OptionalApps | ForEach-Object { Write-Host "  + $_" -ForegroundColor Green }
     }
     
     if ($totalApps -eq 0) {
@@ -300,7 +300,7 @@ function Show-Progress {
     
     $percent = [int](($Current / $Total) * 100)
     $progressChars = [int]($percent / 5)  # 20 character progress bar
-    $progressBar = "█" * $progressChars + "░" * (20 - $progressCharts)
+    $progressBar = "#" * $progressChars + "-" * (20 - $progressChars)
     
     $status = "[$Current/$Total] $Action $AppName"
     
@@ -356,13 +356,13 @@ function Show-WelcomeMessage {
         [switch]$DryRun
     )
     
-    Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║                    Persona Installer v$Version                     ║" -ForegroundColor Green
-    Write-Host "║              Modular Windows App Installation Tool           ║" -ForegroundColor Green
-    Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host "================================================================" -ForegroundColor Green
+    Write-Host "                 Persona Installer v$Version                    " -ForegroundColor Green
+    Write-Host "           Modular Windows App Installation Tool                " -ForegroundColor Green
+    Write-Host "================================================================" -ForegroundColor Green
     
     if ($DryRun) {
-        Write-Host "`n🔍 DRY RUN MODE - No apps will be installed" -ForegroundColor Yellow
+        Write-Host "`n[DRY RUN] MODE - No apps will be installed" -ForegroundColor Yellow
     }
     
     # Show system info
@@ -434,7 +434,7 @@ function Show-Error {
         [System.Exception]$Exception = $null
     )
     
-    Write-Host "`n❌ Error: $Message" -ForegroundColor Red
+    Write-Host "`n[ERROR] $Message" -ForegroundColor Red
     
     if ($Exception) {
         Write-Host "Details: $($Exception.Message)" -ForegroundColor Red
@@ -456,7 +456,7 @@ function Show-Success {
         [string]$Message
     )
     
-    Write-Host "`n✅ $Message" -ForegroundColor Green
+    Write-Host "`n[OK] $Message" -ForegroundColor Green
 }
 
 function Show-Warning {
@@ -474,7 +474,7 @@ function Show-Warning {
         [string]$Message
     )
     
-    Write-Host "`n⚠️  Warning: $Message" -ForegroundColor Yellow
+    Write-Host "`n[WARNING] $Message" -ForegroundColor Yellow
 }
 
 # Export functions

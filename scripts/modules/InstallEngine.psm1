@@ -390,23 +390,23 @@ function Show-InstallationResults {
     
     # Summary stats
     Write-Host "Summary:" -ForegroundColor Yellow
-    Write-Host "  ✅ Successful: $($Summary.Successful)" -ForegroundColor Green
-    Write-Host "  ❌ Failed: $($Summary.Failed)" -ForegroundColor Red
-    Write-Host "  ⏭️  Skipped: $($Summary.Skipped)" -ForegroundColor Gray
-    Write-Host "  📊 Total: $($Summary.TotalApps)" -ForegroundColor White
+    Write-Host "  [OK] Successful: $($Summary.Successful)" -ForegroundColor Green
+    Write-Host "  [X] Failed: $($Summary.Failed)" -ForegroundColor Red
+    Write-Host "  [>>] Skipped: $($Summary.Skipped)" -ForegroundColor Gray
+    Write-Host "  Total: $($Summary.TotalApps)" -ForegroundColor White
     
     if ($ShowDetails -and $Summary.Results.Count -gt 0) {
         Write-Host "`nDetailed Results:" -ForegroundColor Yellow
         
         foreach ($result in $Summary.Results) {
             $statusIcon = switch ($result.Status) {
-                'Success' { '✅' }
-                'AlreadyInstalled' { '⏭️' }
-                'Failed' { '❌' }
-                'Error' { '🚨' }
-                'DryRun' { '🔍' }
-                'NotInCatalog' { '❓' }
-                default { '❔' }
+                'Success' { '[OK]' }
+                'AlreadyInstalled' { '[>>]' }
+                'Failed' { '[X]' }
+                'Error' { '[!]' }
+                'DryRun' { '[?]' }
+                'NotInCatalog' { '[?]' }
+                default { '[?]' }
             }
             
             $statusColor = switch ($result.Status) {
@@ -434,7 +434,7 @@ function Show-InstallationResults {
     if ($failedApps.Count -gt 0) {
         Write-Host "`nFailed Installations:" -ForegroundColor Red
         foreach ($failed in $failedApps) {
-            Write-Host "  ❌ $($failed.DisplayName)" -ForegroundColor Red
+            Write-Host "  [X] $($failed.DisplayName)" -ForegroundColor Red
             if ($failed.LogPath -and (Test-Path $failed.LogPath)) {
                 Write-Host "     Log: $($failed.LogPath)" -ForegroundColor Gray
             }
