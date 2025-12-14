@@ -13,6 +13,8 @@ function Initialize-Logging {
         Directory for log files
     .PARAMETER SessionPrefix
         Prefix for session log files
+    .PARAMETER RetentionDays
+        Number of days to retain log files (default: 30)
     .OUTPUTS
         Logging configuration object
     #>
@@ -22,7 +24,10 @@ function Initialize-Logging {
         [string]$LogsDir,
         
         [Parameter(Mandatory = $false)]
-        [string]$SessionPrefix = "session"
+        [string]$SessionPrefix = "session",
+        
+        [Parameter(Mandatory = $false)]
+        [int]$RetentionDays = 30
     )
     
     try {
@@ -46,8 +51,8 @@ function Initialize-Logging {
             Write-Warning "Failed to start transcript logging: $($_.Exception.Message)"
         }
         
-        # Clean up old logs if needed
-        Clear-OldLogs -LogsDir $LogsDir -RetentionDays 30
+        # Clean up old logs if needed (uses configurable retention)
+        Clear-OldLogs -LogsDir $LogsDir -RetentionDays $RetentionDays
         
         $config = [PSCustomObject]@{
             LogsDir = $LogsDir

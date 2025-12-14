@@ -109,8 +109,9 @@ function Install-App {
         # Initial installation attempt with settings
         $maxRetries = if ($Settings.MaxRetries) { $Settings.MaxRetries } else { 3 }
         $silentFirst = if ($Settings.SilentInstallFirst -ne $null) { $Settings.SilentInstallFirst } else { $true }
+        $retryDelay = if ($Settings.RetryDelay) { $Settings.RetryDelay } else { 2 }
         
-        $installResult = Install-AppWithRetry -WingetId $WingetId -LogPath $LogPath -MaxRetries $maxRetries -SilentFirst $silentFirst
+        $installResult = Install-AppWithRetry -WingetId $WingetId -LogPath $LogPath -MaxRetries $maxRetries -SilentFirst $silentFirst -RetryDelaySeconds $retryDelay
         
         $result.Status = $installResult.Status
         $result.Message = $installResult.Message
@@ -145,6 +146,8 @@ function Install-AppWithRetry {
         Maximum number of retry attempts
     .PARAMETER SilentFirst
         Whether to try silent installation first
+    .PARAMETER RetryDelaySeconds
+        Seconds to wait between retry attempts
     .OUTPUTS
         Installation result object
     #>
@@ -160,7 +163,10 @@ function Install-AppWithRetry {
         [int]$MaxRetries = 3,
         
         [Parameter(Mandatory = $false)]
-        [bool]$SilentFirst = $true
+        [bool]$SilentFirst = $true,
+        
+        [Parameter(Mandatory = $false)]
+        [int]$RetryDelaySeconds = 2
     )
     
     $attempts = 0
@@ -219,8 +225,10 @@ function Install-AppWithRetry {
             break
         }
         
-        # Brief delay between attempts
-        Start-Sleep -Seconds 2
+        # Brief delay between attempts (configurable)
+        if ($RetryDelaySeconds -gt 0) {
+            Start-Sleep -Seconds $RetryDelaySeconds
+        }
     }
     
     # All attempts failed
@@ -371,9 +379,12 @@ function Install-PersonaApps {
             Update-Progress -ProgressManager $progressManager -CurrentItem $appName -Status $installResult.Status -ItemResult $installResult
         }
         
-        # Brief pause between installations
+        # Brief pause between installations (configurable, default 1 second)
         if (-not $DryRun -and $i -lt ($allApps.Count - 1)) {
-            Start-Sleep -Seconds 1
+            $pauseSeconds = if ($Settings.InstallPauseSeconds) { $Settings.InstallPauseSeconds } else { 1 }
+            if ($pauseSeconds -gt 0) {
+                Start-Sleep -Seconds $pauseSeconds
+            }
         }
     }
     

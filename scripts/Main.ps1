@@ -544,8 +544,9 @@ try {
     # Import modules (with feature flags from config)
     Import-PersonaModules -ModulesPath $ModulesDir -Config $config
     
-    # Initialize logging
-    $logConfig = Initialize-Logging -LogsDir $LogsDir
+    # Initialize logging with configurable retention
+    $logRetentionDays = if ($config.Logging.LogRetentionDays) { $config.Logging.LogRetentionDays } else { 30 }
+    $logConfig = Initialize-Logging -LogsDir $LogsDir -RetentionDays $logRetentionDays
     Write-Log -Level 'INFO' -Message "Persona Installer v$Version started" -Context @{ dry_run = $DryRun.IsPresent; config_path = $ConfigPath } -Config $logConfig
     
     # Check prerequisites

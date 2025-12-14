@@ -12,8 +12,11 @@
         # Whether to try silent installation first (requires admin)
         SilentInstallFirst = $true
         
-        # Delay between installation attempts (seconds)
+        # Delay between retry attempts (seconds)
         RetryDelay = 2
+        
+        # Pause between app installations (seconds, 0 to disable)
+        InstallPauseSeconds = 1
         
         # Maximum parallel installations (future feature)
         MaxConcurrency = 1

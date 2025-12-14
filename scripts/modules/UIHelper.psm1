@@ -477,5 +477,87 @@ function Show-Warning {
     Write-Host "`n[WARNING] $Message" -ForegroundColor Yellow
 }
 
+function Read-ValidatedInput {
+    <#
+    .SYNOPSIS
+        Read user input with validation
+    .DESCRIPTION
+        Prompts for input and validates against a pattern or allowed values
+    .PARAMETER Prompt
+        The prompt message to display
+    .PARAMETER Pattern
+        Optional regex pattern to validate against
+    .PARAMETER AllowedValues
+        Optional array of allowed values
+    .PARAMETER DefaultValue
+        Default value if user enters nothing
+    .PARAMETER MaxLength
+        Maximum allowed input length
+    .PARAMETER AllowEmpty
+        Whether empty input is allowed
+    .OUTPUTS
+        Validated input string or $null if cancelled
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Prompt,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$Pattern = $null,
+        
+        [Parameter(Mandatory = $false)]
+        [array]$AllowedValues = @(),
+        
+        [Parameter(Mandatory = $false)]
+        [string]$DefaultValue = $null,
+        
+        [Parameter(Mandatory = $false)]
+        [int]$MaxLength = 0,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$AllowEmpty
+    )
+    
+    $displayPrompt = $Prompt
+    if ($DefaultValue) {
+        $displayPrompt = "$Prompt [$DefaultValue]"
+    }
+    
+    $userInput = Read-Host $displayPrompt
+    
+    # Use default if empty
+    if ([string]::IsNullOrWhiteSpace($userInput)) {
+        if ($DefaultValue) {
+            return $DefaultValue
+        }
+        if ($AllowEmpty) {
+            return $userInput
+        }
+        Write-Host "Input cannot be empty." -ForegroundColor Yellow
+        return $null
+    }
+    
+    # Check max length
+    if ($MaxLength -gt 0 -and $userInput.Length -gt $MaxLength) {
+        Write-Host "Input too long. Maximum $MaxLength characters allowed." -ForegroundColor Yellow
+        return $null
+    }
+    
+    # Check pattern
+    if ($Pattern -and $userInput -notmatch $Pattern) {
+        Write-Host "Invalid format. Please try again." -ForegroundColor Yellow
+        return $null
+    }
+    
+    # Check allowed values
+    if ($AllowedValues.Count -gt 0 -and $userInput -notin $AllowedValues) {
+        Write-Host "Invalid value. Allowed: $($AllowedValues -join ', ')" -ForegroundColor Yellow
+        return $null
+    }
+    
+    return $userInput
+}
+
 # Export functions
-Export-ModuleMember -Function Select-Apps, Show-Menu, Show-PersonaList, Show-InstallationSummary, Show-Progress, Wait-ForUser, Show-WelcomeMessage, Confirm-Action, Show-Error, Show-Success, Show-Warning
+Export-ModuleMember -Function Select-Apps, Show-Menu, Show-PersonaList, Show-InstallationSummary, Show-Progress, Wait-ForUser, Show-WelcomeMessage, Confirm-Action, Show-Error, Show-Success, Show-Warning, Read-ValidatedInput
