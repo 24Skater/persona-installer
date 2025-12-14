@@ -1,5 +1,5 @@
 <# 
-Main.ps1 - Persona Installer v1.2.0
+Main.ps1 - Persona Installer v1.4.0
 Modular, UI-driven PowerShell installer for Windows
 - Loads personas from data\personas\*.json
 - Loads catalog from data\catalog.json
