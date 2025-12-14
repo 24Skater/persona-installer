@@ -287,7 +287,8 @@ function Invoke-SmartRecommendations {
                 $operation = Start-LoggedOperation -OperationName "InstallPersona-$($persona.name)" -Config $LogConfig
                 
                 try {
-                    $result = Install-PersonaApps -Persona $persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -DryRun:$DryRun
+                    $useEnhanced = $Config.Features.EnhancedProgress -eq $true
+                    $result = Install-PersonaApps -Persona $persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -UseEnhancedProgress:$useEnhanced -DryRun:$DryRun
                     Show-InstallationResults -Summary $result -ShowDetails:($Config.UI.ShowDetailedResults -eq $true)
                     
                     Write-InstallLog -AppName $persona.name -WingetId "persona" -Status "Completed" -Message "Persona installation finished" -Duration $result.Duration -Config $LogConfig
@@ -397,9 +398,11 @@ function Invoke-InstallPersona {
                 optional = @($resolvedOptional)
             }
             
-            $result = Install-PersonaApps -Persona $modifiedPersona -SelectedOptionalApps $resolvedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -DryRun:$DryRun
+            $useEnhanced = $Config.Features.EnhancedProgress -eq $true
+            $result = Install-PersonaApps -Persona $modifiedPersona -SelectedOptionalApps $resolvedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -UseEnhancedProgress:$useEnhanced -DryRun:$DryRun
         } else {
-            $result = Install-PersonaApps -Persona $persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -DryRun:$DryRun
+            $useEnhanced = $Config.Features.EnhancedProgress -eq $true
+            $result = Install-PersonaApps -Persona $persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -UseEnhancedProgress:$useEnhanced -DryRun:$DryRun
         }
         Show-InstallationResults -Summary $result -ShowDetails:($Config.UI.ShowDetailedResults -eq $true)
         
@@ -560,10 +563,24 @@ try {
     
     # Load data
     Write-Verbose "Loading catalog and personas..."
-    $catalog = Import-Catalog -CatalogPath $CatalogPath
+    
+    # Use enhanced catalog if feature enabled and file exists
+    $catalogToLoad = $CatalogPath
+    if ($config.Features.UseEnhancedCatalog) {
+        $enhancedCatalogPath = Join-Path $DataDir "catalog-enhanced.json"
+        if (Test-Path $enhancedCatalogPath) {
+            $catalogToLoad = $enhancedCatalogPath
+            Write-Verbose "Using enhanced catalog with dependency metadata"
+        } else {
+            Write-Verbose "Enhanced catalog not found, falling back to standard catalog"
+        }
+    }
+    
+    $catalog = Import-Catalog -CatalogPath $catalogToLoad
     $personas = Import-Personas -PersonaDir $PersonaDir
     
-    Write-Log -Level 'INFO' -Message "Data loaded" -Context @{ catalog_entries = $catalog.Count; personas_count = $personas.Count } -Config $logConfig
+    $catalogType = if ($catalogToLoad -eq $CatalogPath) { "standard" } else { "enhanced" }
+    Write-Log -Level 'INFO' -Message "Data loaded" -Context @{ catalog_entries = $catalog.Count; personas_count = $personas.Count; catalog_type = $catalogType } -Config $logConfig
     
     # Start main menu
     Invoke-MainMenu -Personas $personas -Catalog $catalog -Config $config -LogConfig $logConfig

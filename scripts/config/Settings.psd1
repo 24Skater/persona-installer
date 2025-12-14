@@ -117,6 +117,10 @@
         # Enable enhanced progress indicators (v1.2.0 feature)
         EnhancedProgress = $true
         
+        # Use enhanced catalog with dependency metadata (v1.4.0 feature)
+        # When enabled, uses catalog-enhanced.json instead of catalog.json
+        UseEnhancedCatalog = $true
+        
         # Enable installation queueing (future feature)
         InstallationQueue = $false
         

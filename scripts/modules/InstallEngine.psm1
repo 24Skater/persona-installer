@@ -235,7 +235,8 @@ function Install-PersonaApps {
     .SYNOPSIS
         Install all apps for a persona
     .DESCRIPTION
-        Installs base and optional apps with progress tracking
+        Installs base and optional apps with progress tracking.
+        Uses EnhancedProgressManager when available for ETA, speed metrics, and better feedback.
     .PARAMETER Persona
         Persona object containing app lists
     .PARAMETER SelectedOptionalApps
@@ -246,6 +247,8 @@ function Install-PersonaApps {
         Directory for log files
     .PARAMETER Settings
         Installation settings
+    .PARAMETER UseEnhancedProgress
+        Use enhanced progress manager with ETA and speed metrics
     .PARAMETER DryRun
         Whether to simulate installation
     .OUTPUTS
@@ -267,6 +270,9 @@ function Install-PersonaApps {
         
         [Parameter(Mandatory = $false)]
         [hashtable]$Settings = @{},
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$UseEnhancedProgress,
         
         [Parameter(Mandatory = $false)]
         [switch]$DryRun
@@ -299,14 +305,31 @@ function Install-PersonaApps {
     
     Write-Verbose "Installing $totalApps apps: $($allApps -join ', ')"
     
+    # Initialize enhanced progress manager if available and requested
+    $progressManager = $null
+    $useEnhanced = $UseEnhancedProgress.IsPresent -and (Get-Command 'Initialize-ProgressManager' -ErrorAction SilentlyContinue)
+    
+    if ($useEnhanced) {
+        $progressManager = Initialize-ProgressManager -TotalItems $totalApps -Title "Installing $($Persona.name)" -ShowETA -ShowSpeed
+        Write-Verbose "Using enhanced progress manager"
+    }
+    
     for ($i = 0; $i -lt $allApps.Count; $i++) {
         $appName = $allApps[$i]
         $currentIndex = $i + 1
         
+        # Update progress display
+        if ($useEnhanced -and $progressManager) {
+            Update-Progress -ProgressManager $progressManager -CurrentItem $appName -Status "Installing"
+        } else {
+            # Fallback to basic progress
+            Write-Progress -Activity "Installing Apps" -Status "[$currentIndex/$totalApps] $appName" -PercentComplete (($currentIndex / $totalApps) * 100)
+        }
+        
         # Check if app exists in catalog
         if (-not $Catalog.ContainsKey($appName)) {
             Write-Warning "App '$appName' not found in catalog. Skipping."
-            $results += [PSCustomObject]@{
+            $installResult = [PSCustomObject]@{
                 DisplayName = $appName
                 WingetId = 'Unknown'
                 Status = 'NotInCatalog'
@@ -314,16 +337,22 @@ function Install-PersonaApps {
                 Duration = [TimeSpan]::Zero
                 LogPath = ''
             }
+            $results += $installResult
             $skipped++
+            
+            # Update enhanced progress with result
+            if ($useEnhanced -and $progressManager) {
+                Update-Progress -ProgressManager $progressManager -CurrentItem $appName -Status "Skipped" -ItemResult $installResult
+            }
             continue
         }
         
-        $wingetId = $Catalog[$appName]
+        # Get winget ID - handle both legacy (string) and enhanced (object) catalog formats
+        $catalogEntry = $Catalog[$appName]
+        $wingetId = if ($catalogEntry -is [string]) { $catalogEntry } else { $catalogEntry.id }
+        
         $logFileName = ($appName -replace '[^\w\-\.]', '_') + '.log'
         $logPath = Join-Path $LogsDir $logFileName
-        
-        # Show progress
-        Write-Progress -Activity "Installing Apps" -Status "[$currentIndex/$totalApps] $appName" -PercentComplete (($currentIndex / $totalApps) * 100)
         
         # Install the app
         $installResult = Install-App -DisplayName $appName -WingetId $wingetId -LogPath $logPath -Settings $Settings -DryRun:$DryRun
@@ -337,14 +366,23 @@ function Install-PersonaApps {
             default { $failed++ }
         }
         
+        # Update enhanced progress with result
+        if ($useEnhanced -and $progressManager) {
+            Update-Progress -ProgressManager $progressManager -CurrentItem $appName -Status $installResult.Status -ItemResult $installResult
+        }
+        
         # Brief pause between installations
         if (-not $DryRun -and $i -lt ($allApps.Count - 1)) {
             Start-Sleep -Seconds 1
         }
     }
     
-    # Clear progress
-    Write-Progress -Activity "Installing Apps" -Completed
+    # Complete progress tracking
+    if ($useEnhanced -and $progressManager) {
+        Complete-Progress -ProgressManager $progressManager -ShowSummary
+    } else {
+        Write-Progress -Activity "Installing Apps" -Completed
+    }
     
     $stopwatch.Stop()
     

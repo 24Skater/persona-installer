@@ -41,10 +41,10 @@ function Test-ModuleStructure {
         return
     }
     
-    # Test individual module files
-    $expectedModules = @('CompatibilityHelper', 'PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
+    # Test individual module files - core modules
+    $coreModules = @('CompatibilityHelper', 'PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
     
-    foreach ($module in $expectedModules) {
+    foreach ($module in $coreModules) {
         $modulePath = Join-Path $ModulesDir "$module.psm1"
         try {
             if (Test-Path $modulePath) {
@@ -56,6 +56,22 @@ function Test-ModuleStructure {
             Add-TestResult "Module File: $module" "ERROR" $_.Exception.Message
         }
     }
+    
+    # Test optional/feature module files
+    $optionalModules = @('DependencyManager', 'EnhancedProgressManager', 'PersonaRecommendationEngine')
+    
+    foreach ($module in $optionalModules) {
+        $modulePath = Join-Path $ModulesDir "$module.psm1"
+        try {
+            if (Test-Path $modulePath) {
+                Add-TestResult "Module File: $module (feature)" "PASS" "Found at $modulePath"
+            } else {
+                Add-TestResult "Module File: $module (feature)" "WARN" "Not found (optional)"
+            }
+        } catch {
+            Add-TestResult "Module File: $module (feature)" "ERROR" $_.Exception.Message
+        }
+    }
 }
 
 function Test-ModuleLoading {
@@ -63,15 +79,34 @@ function Test-ModuleLoading {
     
     $ScriptRoot = Split-Path -Parent $PSCommandPath
     $ModulesDir = Join-Path $ScriptRoot "modules"
-    $expectedModules = @('CompatibilityHelper', 'PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
     
-    foreach ($module in $expectedModules) {
+    # Core modules (required)
+    $coreModules = @('CompatibilityHelper', 'PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
+    
+    # Optional/feature modules
+    $optionalModules = @('DependencyManager', 'EnhancedProgressManager', 'PersonaRecommendationEngine')
+    
+    foreach ($module in $coreModules) {
         $modulePath = Join-Path $ModulesDir "$module.psm1"
         try {
             Import-Module $modulePath -Force -DisableNameChecking
             Add-TestResult "Module Import: $module" "PASS" "Successfully imported"
         } catch {
             Add-TestResult "Module Import: $module" "FAIL" $_.Exception.Message
+        }
+    }
+    
+    foreach ($module in $optionalModules) {
+        $modulePath = Join-Path $ModulesDir "$module.psm1"
+        try {
+            if (Test-Path $modulePath) {
+                Import-Module $modulePath -Force -DisableNameChecking
+                Add-TestResult "Module Import: $module (optional)" "PASS" "Successfully imported"
+            } else {
+                Add-TestResult "Module Import: $module (optional)" "WARN" "Not found (optional module)"
+            }
+        } catch {
+            Add-TestResult "Module Import: $module (optional)" "WARN" "Failed to import: $($_.Exception.Message)"
         }
     }
 }
@@ -121,7 +156,7 @@ function Test-DataFiles {
     $CatalogPath = Join-Path $DataDir "catalog.json"
     $PersonaDir = Join-Path $DataDir "personas"
     
-    # Test catalog
+    # Test standard catalog
     try {
         if (Test-Path $CatalogPath) {
             $catalog = Get-Content $CatalogPath -Raw | ConvertFrom-Json
@@ -129,12 +164,35 @@ function Test-DataFiles {
             foreach ($prop in $catalog.PSObject.Properties) {
                 $catalogHash[$prop.Name] = $prop.Value
             }
-            Add-TestResult "Catalog File" "PASS" "Found with $($catalogHash.Count) entries"
+            Add-TestResult "Catalog File (Standard)" "PASS" "Found with $($catalogHash.Count) entries"
         } else {
-            Add-TestResult "Catalog File" "FAIL" "Not found at $CatalogPath"
+            Add-TestResult "Catalog File (Standard)" "FAIL" "Not found at $CatalogPath"
         }
     } catch {
-        Add-TestResult "Catalog File" "ERROR" $_.Exception.Message
+        Add-TestResult "Catalog File (Standard)" "ERROR" $_.Exception.Message
+    }
+    
+    # Test enhanced catalog
+    $enhancedCatalogPath = Join-Path $DataDir "catalog-enhanced.json"
+    try {
+        if (Test-Path $enhancedCatalogPath) {
+            $enhancedCatalog = Get-Content $enhancedCatalogPath -Raw | ConvertFrom-Json
+            $enhancedHash = @{}
+            foreach ($prop in $enhancedCatalog.PSObject.Properties) {
+                $enhancedHash[$prop.Name] = $prop.Value
+            }
+            # Check if it has enhanced format (objects with 'id' property)
+            $firstEntry = $enhancedHash.Values | Select-Object -First 1
+            if ($firstEntry.id) {
+                Add-TestResult "Catalog File (Enhanced)" "PASS" "Found with $($enhancedHash.Count) entries (has dependency metadata)"
+            } else {
+                Add-TestResult "Catalog File (Enhanced)" "WARN" "Found but appears to be legacy format"
+            }
+        } else {
+            Add-TestResult "Catalog File (Enhanced)" "WARN" "Not found at $enhancedCatalogPath (optional)"
+        }
+    } catch {
+        Add-TestResult "Catalog File (Enhanced)" "ERROR" $_.Exception.Message
     }
     
     # Test personas directory
@@ -168,9 +226,12 @@ function Test-FunctionAvailability {
         'CompatibilityHelper' = @('Get-SystemInfoInstance', 'Get-ComputerSystemInfo', 'Test-IsAdministrator')
         'PersonaManager' = @('Import-Personas', 'Save-Persona', 'New-Persona', 'Test-PersonaName')
         'CatalogManager' = @('Import-Catalog', 'Export-Catalog', 'Show-Catalog')
-        'InstallEngine' = @('Test-AppInstalled', 'Install-App')
+        'InstallEngine' = @('Test-AppInstalled', 'Install-App', 'Install-PersonaApps')
         'UIHelper' = @('Select-Apps', 'Show-Menu', 'Show-Progress')
         'Logger' = @('Initialize-Logging', 'Write-Log')
+        'DependencyManager' = @('Resolve-AppDependencies', 'Show-DependencyAnalysis')
+        'EnhancedProgressManager' = @('Initialize-ProgressManager', 'Update-Progress', 'Complete-Progress')
+        'PersonaRecommendationEngine' = @('Get-SystemAnalysis', 'Get-PersonaRecommendations')
     }
     
     foreach ($module in $functionsToTest.Keys) {

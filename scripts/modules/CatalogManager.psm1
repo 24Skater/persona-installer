@@ -183,7 +183,8 @@ function Show-Catalog {
     .SYNOPSIS
         Display the catalog in a user-friendly format
     .DESCRIPTION
-        Shows catalog entries in a table format with optional export to CSV
+        Shows catalog entries in a table format with optional export to CSV.
+        Supports both legacy (string) and enhanced (object) catalog formats.
     .PARAMETER Catalog
         The catalog hashtable to display
     .PARAMETER DataDir
@@ -198,14 +199,42 @@ function Show-Catalog {
         [string]$DataDir
     )
     
-    Write-Host "`nCatalog entries ($($Catalog.Count) total):" -ForegroundColor Cyan
+    # Detect catalog format
+    $firstEntry = $Catalog.Values | Select-Object -First 1
+    $isEnhancedFormat = $firstEntry -isnot [string]
+    
+    $formatLabel = if ($isEnhancedFormat) { "enhanced" } else { "legacy" }
+    Write-Host "`nCatalog entries ($($Catalog.Count) total, $formatLabel format):" -ForegroundColor Cyan
     
     # Convert to objects for better display
     $items = @()
     foreach ($key in ($Catalog.Keys | Sort-Object)) {
-        $items += [PSCustomObject]@{ 
-            Name = $key
-            WingetId = $Catalog[$key] 
+        $entry = $Catalog[$key]
+        
+        if ($entry -is [string]) {
+            # Legacy format
+            $items += [PSCustomObject]@{ 
+                Name = $key
+                WingetId = $entry
+                Category = '-'
+                Dependencies = '-'
+            }
+        } else {
+            # Enhanced format
+            $wingetId = if ($entry.id) { $entry.id } else { $entry }
+            $category = if ($entry.category) { $entry.category } else { '-' }
+            $deps = if ($entry.dependencies -and $entry.dependencies.Count -gt 0) { 
+                $entry.dependencies -join ', ' 
+            } else { 
+                '-' 
+            }
+            
+            $items += [PSCustomObject]@{ 
+                Name = $key
+                WingetId = $wingetId
+                Category = $category
+                Dependencies = $deps
+            }
         }
     }
     
@@ -222,17 +251,32 @@ function Show-Catalog {
     
     # Fallback to console table
     if (-not $hasGridView -and $items.Count -gt 0) {
-        $maxNameWidth = ($items | ForEach-Object { $_.Name.Length } | Measure-Object -Maximum).Maximum
+        $maxNameWidth = [Math]::Min(($items | ForEach-Object { $_.Name.Length } | Measure-Object -Maximum).Maximum, 30)
         $maxNameWidth = [Math]::Max($maxNameWidth, 4)  # Minimum width for "Name" header
         
-        # Header
-        $header = "{0}  {1}" -f ("Name".PadRight($maxNameWidth)), "WingetId"
-        Write-Host $header
-        Write-Host ("-" * ($header.Length + 10))
+        $maxIdWidth = [Math]::Min(($items | ForEach-Object { $_.WingetId.Length } | Measure-Object -Maximum).Maximum, 35)
+        $maxIdWidth = [Math]::Max($maxIdWidth, 8)  # Minimum width for "WingetId" header
+        
+        # Header - show category column for enhanced format
+        if ($isEnhancedFormat) {
+            $header = "{0}  {1}  {2}  {3}" -f ("Name".PadRight($maxNameWidth)), ("WingetId".PadRight($maxIdWidth)), ("Category".PadRight(12)), "Dependencies"
+        } else {
+            $header = "{0}  {1}" -f ("Name".PadRight($maxNameWidth)), "WingetId"
+        }
+        Write-Host $header -ForegroundColor Yellow
+        Write-Host ("-" * [Math]::Min($header.Length + 10, 120)) -ForegroundColor Gray
         
         # Entries
         foreach ($item in $items) {
-            $line = "{0}  {1}" -f ($item.Name.PadRight($maxNameWidth)), $item.WingetId
+            $displayName = if ($item.Name.Length -gt $maxNameWidth) { $item.Name.Substring(0, $maxNameWidth - 3) + "..." } else { $item.Name }
+            $displayId = if ($item.WingetId.Length -gt $maxIdWidth) { $item.WingetId.Substring(0, $maxIdWidth - 3) + "..." } else { $item.WingetId }
+            
+            if ($isEnhancedFormat) {
+                $displayCat = if ($item.Category.Length -gt 12) { $item.Category.Substring(0, 9) + "..." } else { $item.Category }
+                $line = "{0}  {1}  {2}  {3}" -f ($displayName.PadRight($maxNameWidth)), ($displayId.PadRight($maxIdWidth)), ($displayCat.PadRight(12)), $item.Dependencies
+            } else {
+                $line = "{0}  {1}" -f ($displayName.PadRight($maxNameWidth)), $displayId
+            }
             Write-Host $line
         }
     }
