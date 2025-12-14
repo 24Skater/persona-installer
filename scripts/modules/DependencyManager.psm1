@@ -85,65 +85,81 @@ function Resolve-AppDependencies {
     
     Write-Verbose "Resolving dependencies for $($AppList.Count) apps"
     
-    $resolvedApps = @()
-    $conflicts = @()
-    $missingDeps = @()
-    $circularDeps = @()
-    $processedApps = @{}
-    $currentPath = @()
+    # Use a state hashtable to allow nested function to modify parent scope
+    $state = @{
+        ResolvedApps = [System.Collections.ArrayList]::new()
+        Conflicts = [System.Collections.ArrayList]::new()
+        MissingDeps = [System.Collections.ArrayList]::new()
+        CircularDeps = [System.Collections.ArrayList]::new()
+        ProcessedApps = @{}
+        CurrentPath = [System.Collections.ArrayList]::new()
+    }
     
     function Resolve-Single {
-        param($AppName, $Depth = 0)
+        param(
+            [string]$AppName, 
+            [int]$Depth = 0,
+            [hashtable]$State,
+            [object]$Cat
+        )
         
         if ($Depth -gt 10) {
-            $circularDeps += "Circular dependency detected: $($currentPath -join ' -> ') -> $AppName"
+            [void]$State.CircularDeps.Add("Circular dependency detected: $($State.CurrentPath -join ' -> ') -> $AppName")
             return
         }
         
-        if ($processedApps.ContainsKey($AppName)) {
+        if ($State.ProcessedApps.ContainsKey($AppName)) {
             return
         }
         
-        $currentPath += $AppName
+        [void]$State.CurrentPath.Add($AppName)
         
         try {
-            $appDep = Get-AppDependencies -AppName $AppName -Catalog $Catalog
+            $appDep = Get-AppDependencies -AppName $AppName -Catalog $Cat
             if (-not $appDep) {
-                $missingDeps += $AppName
+                [void]$State.MissingDeps.Add($AppName)
                 return
             }
             
             # Check for conflicts with already resolved apps
             foreach ($conflict in $appDep.Conflicts) {
-                if ($processedApps.ContainsKey($conflict)) {
-                    $conflicts += "Conflict: $AppName conflicts with $conflict"
+                if ($State.ProcessedApps.ContainsKey($conflict)) {
+                    [void]$State.Conflicts.Add("Conflict: $AppName conflicts with $conflict")
                 }
             }
             
             # Resolve dependencies first (depth-first)
             foreach ($dep in $appDep.Dependencies) {
-                if (-not $processedApps.ContainsKey($dep)) {
-                    Resolve-Single -AppName $dep -Depth ($Depth + 1)
+                if (-not $State.ProcessedApps.ContainsKey($dep)) {
+                    Resolve-Single -AppName $dep -Depth ($Depth + 1) -State $State -Cat $Cat
                 }
             }
             
             # Add this app to resolved list
-            if (-not $processedApps.ContainsKey($AppName)) {
-                $resolvedApps += $appDep
-                $processedApps[$AppName] = $true
+            if (-not $State.ProcessedApps.ContainsKey($AppName)) {
+                [void]$State.ResolvedApps.Add($appDep)
+                $State.ProcessedApps[$AppName] = $true
                 Write-Verbose "Resolved: $AppName (depth: $Depth)"
             }
         }
         finally {
-            $currentPath = $currentPath[0..($currentPath.Length - 2)]
+            if ($State.CurrentPath.Count -gt 0) {
+                $State.CurrentPath.RemoveAt($State.CurrentPath.Count - 1)
+            }
         }
     }
     
     # Resolve each app in the original list
     foreach ($app in $AppList) {
-        $currentPath = @()
-        Resolve-Single -AppName $app
+        $state.CurrentPath.Clear()
+        Resolve-Single -AppName $app -State $state -Cat $Catalog
     }
+    
+    # Convert ArrayLists back to arrays for output
+    $resolvedApps = @($state.ResolvedApps)
+    $conflicts = @($state.Conflicts)
+    $missingDeps = @($state.MissingDeps)
+    $circularDeps = @($state.CircularDeps)
     
     return [PSCustomObject]@{
         ResolvedApps = $resolvedApps
@@ -188,22 +204,24 @@ function Test-SystemRequirements {
             }
         }
         
-        # Check memory
+        # Check memory (uses CompatibilityHelper for cross-version WMI/CIM support)
         if ($requirements.min_memory_gb) {
-            $totalMemoryGB = [Math]::Round((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
+            $computerInfo = Get-ComputerSystemInfo
+            $totalMemoryGB = if ($computerInfo) { $computerInfo.TotalMemoryGB } else { 0 }
             
             if ($totalMemoryGB -lt $requirements.min_memory_gb) {
-                $issues += "Minimum ${requirements.min_memory_gb}GB RAM required (current: ${totalMemoryGB}GB)"
+                $issues += "Minimum $($requirements.min_memory_gb)GB RAM required (current: ${totalMemoryGB}GB)"
             }
         }
         
-        # Check disk space
+        # Check disk space (uses CompatibilityHelper for cross-version WMI/CIM support)
         if ($requirements.min_disk_space_gb) {
             $systemDrive = $env:SystemDrive
-            $freeSpaceGB = [Math]::Round((Get-WmiObject Win32_LogicalDisk -Filter "DeviceID='$systemDrive'").FreeSpace / 1GB, 1)
+            $diskInfo = Get-LogicalDiskInfo -DeviceID $systemDrive
+            $freeSpaceGB = if ($diskInfo) { $diskInfo.FreeSpaceGB } else { 0 }
             
             if ($freeSpaceGB -lt $requirements.min_disk_space_gb) {
-                $issues += "Minimum ${requirements.min_disk_space_gb}GB free space required (current: ${freeSpaceGB}GB)"
+                $issues += "Minimum $($requirements.min_disk_space_gb)GB free space required (current: ${freeSpaceGB}GB)"
             }
         }
         
@@ -227,8 +245,7 @@ function Test-SystemRequirements {
         
         # Check if running as admin (for certain apps)
         if ($requirements.requires_admin) {
-            $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
-            if (-not $isAdmin) {
+            if (-not (Test-IsAdministrator)) {
                 $warnings += "Administrator privileges recommended for optimal installation"
             }
         }
@@ -254,6 +271,8 @@ function Show-DependencyAnalysis {
         Shows resolved dependencies, conflicts, and installation order
     .PARAMETER Analysis
         Dependency analysis result from Resolve-AppDependencies
+    .PARAMETER OriginalList
+        The original list of apps requested (before dependency resolution)
     .PARAMETER ShowDetails
         Whether to show detailed dependency tree
     #>
@@ -263,15 +282,25 @@ function Show-DependencyAnalysis {
         [PSCustomObject]$Analysis,
         
         [Parameter(Mandatory = $false)]
+        [array]$OriginalList = @(),
+        
+        [Parameter(Mandatory = $false)]
         [switch]$ShowDetails
     )
     
     Write-Host "`n=== Dependency Analysis ===" -ForegroundColor Cyan
     
     # Summary
+    $originalCount = if ($OriginalList.Count -gt 0) {
+        ($Analysis.ResolvedApps | Where-Object { $_.AppName -in $OriginalList } | Measure-Object).Count
+    } else {
+        $Analysis.TotalApps
+    }
+    $additionalDeps = $Analysis.TotalApps - $originalCount
+    
     Write-Host "Total apps to install: $($Analysis.TotalApps)" -ForegroundColor Green
-    Write-Host "Original request: $($Analysis.ResolvedApps | Where-Object { $_.AppName -in $OriginalList } | Measure-Object | Select-Object -ExpandProperty Count)" -ForegroundColor White
-    Write-Host "Additional dependencies: $($Analysis.TotalApps - ($Analysis.ResolvedApps | Where-Object { $_.AppName -in $OriginalList } | Measure-Object | Select-Object -ExpandProperty Count))" -ForegroundColor Yellow
+    Write-Host "Original request: $originalCount" -ForegroundColor White
+    Write-Host "Additional dependencies: $additionalDeps" -ForegroundColor Yellow
     
     # Issues
     if ($Analysis.HasIssues) {

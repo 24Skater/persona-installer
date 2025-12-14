@@ -3,12 +3,12 @@ PersonaManager.psm1 - Persona operations module
 Handles loading, saving, creating, and editing personas
 #>
 
-function Load-Personas {
+function Import-Personas {
     <#
     .SYNOPSIS
-        Load all persona files from the personas directory
+        Import all persona files from the personas directory
     .DESCRIPTION
-        Scans the personas directory for JSON files and loads them into memory
+        Scans the personas directory for JSON files and imports them into memory
     .PARAMETER PersonaDir
         Path to the personas directory
     .OUTPUTS
@@ -20,7 +20,7 @@ function Load-Personas {
         [string]$PersonaDir
     )
     
-    Write-Verbose "Loading personas from: $PersonaDir"
+    Write-Verbose "Importing personas from: $PersonaDir"
     
     if (-not (Test-Path $PersonaDir)) { 
         Write-Verbose "Creating personas directory: $PersonaDir"
@@ -48,7 +48,7 @@ function Load-Personas {
         }
     }
     
-    Write-Verbose "Loaded $($personas.Count) personas"
+    Write-Verbose "Imported $($personas.Count) personas"
     return $personas
 }
 
@@ -79,7 +79,7 @@ function Save-Persona {
         throw "Persona requires 'name' property" 
     }
     
-    if (-not (Confirm-PersonaName -Name $Persona.name)) {
+    if (-not (Test-PersonaName -Name $Persona.name)) {
         throw "Invalid persona name. Use only alphanumeric characters, dashes, and underscores (1-50 characters)"
     }
     
@@ -140,7 +140,7 @@ function New-Persona {
     Write-Verbose "Creating new persona: $Name"
     
     # Validate name
-    if (-not (Confirm-PersonaName -Name $Name)) {
+    if (-not (Test-PersonaName -Name $Name)) {
         throw "Invalid persona name"
     }
     
@@ -234,10 +234,10 @@ function Edit-Persona {
     return $Persona
 }
 
-function Confirm-PersonaName {
+function Test-PersonaName {
     <#
     .SYNOPSIS
-        Validate persona name format
+        Test if persona name format is valid
     .DESCRIPTION
         Ensures persona name follows naming conventions
     .PARAMETER Name
@@ -307,4 +307,4 @@ function Get-PersonaSummary {
 }
 
 # Export functions
-Export-ModuleMember -Function Load-Personas, Save-Persona, New-Persona, Edit-Persona, Confirm-PersonaName, Get-PersonaSummary
+Export-ModuleMember -Function Import-Personas, Save-Persona, New-Persona, Edit-Persona, Test-PersonaName, Get-PersonaSummary

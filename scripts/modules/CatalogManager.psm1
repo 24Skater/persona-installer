@@ -3,10 +3,10 @@ CatalogManager.psm1 - Catalog operations module
 Handles loading, saving, and managing the application catalog
 #>
 
-function Load-Catalog {
+function Import-Catalog {
     <#
     .SYNOPSIS
-        Load the application catalog from JSON file
+        Import the application catalog from JSON file
     .DESCRIPTION
         Reads and parses the catalog.json file containing app name to winget ID mappings
     .PARAMETER CatalogPath
@@ -20,7 +20,7 @@ function Load-Catalog {
         [string]$CatalogPath
     )
     
-    Write-Verbose "Loading catalog from: $CatalogPath"
+    Write-Verbose "Importing catalog from: $CatalogPath"
     
     if (-not (Test-Path $CatalogPath)) { 
         throw "Catalog not found at: $CatalogPath" 
@@ -40,7 +40,7 @@ function Load-Catalog {
             }
         }
         
-        Write-Verbose "Successfully loaded $($catalog.Count) catalog entries"
+        Write-Verbose "Successfully imported $($catalog.Count) catalog entries"
         return $catalog
     }
     catch {
@@ -48,10 +48,10 @@ function Load-Catalog {
     }
 }
 
-function Save-Catalog {
+function Export-Catalog {
     <#
     .SYNOPSIS
-        Save the catalog to JSON file
+        Export the catalog to JSON file
     .DESCRIPTION
         Converts catalog hashtable to JSON and saves to disk
     .PARAMETER Catalog
@@ -69,7 +69,7 @@ function Save-Catalog {
     )
     
     try {
-        Write-Verbose "Saving catalog to: $CatalogPath"
+        Write-Verbose "Exporting catalog to: $CatalogPath"
         $json = $Catalog | ConvertTo-Json -Depth 5 -ErrorAction Stop
         $json | Set-Content -Path $CatalogPath -Encoding UTF8 -ErrorAction Stop
         Write-Verbose "Successfully saved catalog with $($Catalog.Count) entries"
@@ -402,4 +402,4 @@ function Get-CatalogStatistics {
 }
 
 # Export functions
-Export-ModuleMember -Function Load-Catalog, Save-Catalog, Add-CatalogEntry, Remove-CatalogEntry, Show-Catalog, Test-WingetId, Find-WingetApps, Get-CatalogStatistics
+Export-ModuleMember -Function Import-Catalog, Export-Catalog, Add-CatalogEntry, Remove-CatalogEntry, Show-Catalog, Test-WingetId, Find-WingetApps, Get-CatalogStatistics

@@ -83,20 +83,20 @@ function Select-Apps {
     Write-Host "- Enter 'all' to select all apps" -ForegroundColor Gray
     Write-Host "- Enter 'none' or leave empty to select none" -ForegroundColor Gray
     
-    $input = Read-Host "Your selection"
+    $userSelection = Read-Host "Your selection"
     
-    if ([string]::IsNullOrWhiteSpace($input) -or $input -eq "none") {
+    if ([string]::IsNullOrWhiteSpace($userSelection) -or $userSelection -eq "none") {
         Write-Verbose "User selected no apps"
         return @()
     }
     
-    if ($input -eq "all") {
+    if ($userSelection -eq "all") {
         Write-Verbose "User selected all apps"
         return $Apps
     }
     
     # Parse comma-separated numbers
-    $indices = $input -split '[,\s]+' | Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ }
+    $indices = $userSelection -split '[,\s]+' | Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ }
     
     foreach ($index in $indices) {
         if ($index -ge 1 -and $index -le $Apps.Count) {
@@ -365,15 +365,15 @@ function Show-WelcomeMessage {
         Write-Host "`n[DRY RUN] MODE - No apps will be installed" -ForegroundColor Yellow
     }
     
-    # Show system info
+    # Show system info (uses CompatibilityHelper for cross-version WMI/CIM support)
     try {
         $psVersion = $PSVersionTable.PSVersion.ToString()
-        $osVersion = (Get-WmiObject Win32_OperatingSystem -ErrorAction SilentlyContinue).Caption
+        $osInfo = Get-OperatingSystemInfo
         
         Write-Host "`nSystem Information:" -ForegroundColor Gray
         Write-Host "  PowerShell: $psVersion" -ForegroundColor Gray
-        if ($osVersion) {
-            Write-Host "  OS: $osVersion" -ForegroundColor Gray
+        if ($osInfo -and $osInfo.Caption) {
+            Write-Host "  OS: $($osInfo.Caption)" -ForegroundColor Gray
         }
     }
     catch {

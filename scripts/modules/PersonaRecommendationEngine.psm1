@@ -27,19 +27,19 @@ function Get-SystemAnalysis {
     }
     
     try {
-        # Hardware Analysis
-        $computerSystem = Get-WmiObject Win32_ComputerSystem -ErrorAction SilentlyContinue
-        if ($computerSystem) {
+        # Hardware Analysis (uses CompatibilityHelper for cross-version WMI/CIM support)
+        $computerInfo = Get-ComputerSystemInfo
+        if ($computerInfo) {
             $analysis.Hardware = @{
-                TotalMemoryGB = [Math]::Round($computerSystem.TotalPhysicalMemory / 1GB, 1)
-                NumberOfProcessors = $computerSystem.NumberOfProcessors
-                Model = $computerSystem.Model
-                Manufacturer = $computerSystem.Manufacturer
+                TotalMemoryGB = $computerInfo.TotalMemoryGB
+                NumberOfProcessors = $computerInfo.NumberOfProcessors
+                Model = $computerInfo.Model
+                Manufacturer = $computerInfo.Manufacturer
             }
         }
         
-        # Operating System Info
-        $osInfo = Get-WmiObject Win32_OperatingSystem -ErrorAction SilentlyContinue
+        # Operating System Info (uses CompatibilityHelper for cross-version WMI/CIM support)
+        $osInfo = Get-OperatingSystemInfo
         if ($osInfo) {
             $analysis.Environment.WindowsVersion = $osInfo.Caption
             $analysis.Environment.Architecture = $osInfo.OSArchitecture
@@ -47,17 +47,18 @@ function Get-SystemAnalysis {
         }
         
         # PowerShell Version
-        $analysis.Environment.PowerShellVersion = $PSVersionTable.PSVersion.ToString()
-        $analysis.Environment.PowerShellEdition = $PSVersionTable.PSEdition
+        $psInfo = Get-PowerShellInfo
+        $analysis.Environment.PowerShellVersion = $psInfo.VersionString
+        $analysis.Environment.PowerShellEdition = $psInfo.Edition
         
         # Detect Existing Software
         $analysis.Software = Find-ExistingSoftware
         
         # User Environment Analysis
-        $analysis.UserProfile = Analyze-UserEnvironment
+        $analysis.UserProfile = Get-UserEnvironmentAnalysis
         
         # Determine System Capabilities
-        $analysis.Capabilities = Determine-SystemCapabilities -Hardware $analysis.Hardware -Software $analysis.Software
+        $analysis.Capabilities = Get-SystemCapabilities -Hardware $analysis.Hardware -Software $analysis.Software
         
         Write-Verbose "System analysis completed successfully"
         
@@ -166,10 +167,10 @@ function Find-ExistingSoftware {
     return $software
 }
 
-function Analyze-UserEnvironment {
+function Get-UserEnvironmentAnalysis {
     <#
     .SYNOPSIS
-        Analyze user environment and usage patterns
+        Get user environment analysis and usage patterns
     .DESCRIPTION
         Examines user profile, common directories, and environment variables
     .OUTPUTS
@@ -248,9 +249,8 @@ function Analyze-UserEnvironment {
         
         $userProfile.WorkflowIndicators = $devIndicators
         
-        # Check for admin privileges
-        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
-        if ($isAdmin) {
+        # Check for admin privileges (uses CompatibilityHelper)
+        if (Test-IsAdministrator) {
             $userProfile.EnvironmentClues += "Running as Administrator"
         }
         
@@ -263,10 +263,10 @@ function Analyze-UserEnvironment {
     return $userProfile
 }
 
-function Determine-SystemCapabilities {
+function Get-SystemCapabilities {
     <#
     .SYNOPSIS
-        Determine what the system is capable of running
+        Get system capabilities assessment
     .DESCRIPTION
         Analyzes hardware and software to determine suitable persona types
     .PARAMETER Hardware

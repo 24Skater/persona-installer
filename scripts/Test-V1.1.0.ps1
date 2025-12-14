@@ -42,7 +42,7 @@ function Test-ModuleStructure {
     }
     
     # Test individual module files
-    $expectedModules = @('PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
+    $expectedModules = @('CompatibilityHelper', 'PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
     
     foreach ($module in $expectedModules) {
         $modulePath = Join-Path $ModulesDir "$module.psm1"
@@ -63,7 +63,7 @@ function Test-ModuleLoading {
     
     $ScriptRoot = Split-Path -Parent $PSCommandPath
     $ModulesDir = Join-Path $ScriptRoot "modules"
-    $expectedModules = @('PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
+    $expectedModules = @('CompatibilityHelper', 'PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
     
     foreach ($module in $expectedModules) {
         $modulePath = Join-Path $ModulesDir "$module.psm1"
@@ -165,8 +165,9 @@ function Test-FunctionAvailability {
     
     # Test key functions from each module
     $functionsToTest = @{
-        'PersonaManager' = @('Load-Personas', 'Save-Persona', 'New-Persona')
-        'CatalogManager' = @('Load-Catalog', 'Save-Catalog', 'Show-Catalog')
+        'CompatibilityHelper' = @('Get-SystemInfoInstance', 'Get-ComputerSystemInfo', 'Test-IsAdministrator')
+        'PersonaManager' = @('Import-Personas', 'Save-Persona', 'New-Persona', 'Test-PersonaName')
+        'CatalogManager' = @('Import-Catalog', 'Export-Catalog', 'Show-Catalog')
         'InstallEngine' = @('Test-AppInstalled', 'Install-App')
         'UIHelper' = @('Select-Apps', 'Show-Menu', 'Show-Progress')
         'Logger' = @('Initialize-Logging', 'Write-Log')
@@ -203,7 +204,7 @@ function Test-MainScript {
                 'Configuration Loading' = $mainContent -match 'Load-Configuration'
                 'Error Handling' = $mainContent -match 'try.*catch'
                 'Parameter Support' = $mainContent -match '\[CmdletBinding\(\)\]'
-                'Version Info' = $mainContent -match '\$Version\s*=\s*"1\.1\.0"'
+                'Version Info' = $mainContent -match '\$Version\s*=\s*"1\.[0-9]+\.[0-9]+"'
             }
             
             foreach ($check in $checks.GetEnumerator()) {

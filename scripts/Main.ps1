@@ -28,8 +28,8 @@ $PersonaDir = Join-Path $DataDir "personas"
 $CatalogPath = Join-Path $DataDir "catalog.json"
 $LogsDir = Join-Path $RepoRoot "logs"
 
-# ---------------- Load Configuration ----------------
-function Load-Configuration {
+# ---------------- Import Configuration ----------------
+function Import-Configuration {
     param([string]$ConfigPath = "")
     
     $defaultConfigPath = Join-Path $ConfigDir "Settings.psd1"
@@ -55,8 +55,8 @@ function Load-Configuration {
 function Import-PersonaModules {
     param([string]$ModulesPath, [hashtable]$Config = @{})
     
-    # Core modules (always load)
-    $coreModules = @('PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
+    # Core modules (always load) - CompatibilityHelper first for cross-version support
+    $coreModules = @('CompatibilityHelper', 'PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
     
     # Optional v1.2.0+ modules (load based on feature flags)
     $optionalModules = @()
@@ -156,84 +156,69 @@ function Invoke-MainMenu {
         [PSCustomObject]$LogConfig
     )
     
-    # Build dynamic menu based on available features
-    $menuOptions = @()
+    # Build dynamic menu with explicit action mapping (no confusing offset logic)
+    # Using ordered hashtable to maintain menu order
+    $menuActions = [ordered]@{}
     
     # Smart Recommendations (if feature enabled)
     if ($Config.Features.SmartRecommendations) {
-        $menuOptions += "Smart persona recommendations"
+        $menuActions["Smart persona recommendations"] = "SmartRecommendations"
     }
     
-    # Core menu options
-    $menuOptions += @(
-        "Install from persona",
-        "Create new persona", 
-        "Edit existing persona",
-        "Manage catalog (add package)",
-        "View catalog",
-        "Exit"
-    )
+    # Core menu options with their action identifiers
+    $menuActions["Install from persona"] = "InstallPersona"
+    $menuActions["Create new persona"] = "CreatePersona"
+    $menuActions["Edit existing persona"] = "EditPersona"
+    $menuActions["Manage catalog (add package)"] = "ManageCatalog"
+    $menuActions["View catalog"] = "ViewCatalog"
+    $menuActions["Exit"] = "Exit"
     
-    while ($true) {
+    # Extract menu options (keys) as array for display
+    $menuOptions = @($menuActions.Keys)
+    
+    $exitMenu = $false
+    
+    while (-not $exitMenu) {
         try {
             $choice = Show-Menu -Title "Persona Installer v$Version" -Options $menuOptions
             
-            # Dynamic switch based on whether Smart Recommendations is first
-            $offset = if ($Config.Features.SmartRecommendations) { 0 } else { 1 }
+            # Validate selection
+            if ($choice -lt 1 -or $choice -gt $menuOptions.Count) {
+                Write-Host "Invalid selection. Please choose 1-$($menuOptions.Count)." -ForegroundColor Yellow
+                continue
+            }
             
-            switch ($choice) {
-                1 { 
-                    if ($offset -eq 0) {
-                        Invoke-SmartRecommendations -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
-                    } else {
-                        Invoke-InstallPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
-                    }
+            # Get the action for selected menu item
+            $selectedOption = $menuOptions[$choice - 1]
+            $action = $menuActions[$selectedOption]
+            
+            # Execute the appropriate action
+            switch ($action) {
+                "SmartRecommendations" {
+                    Invoke-SmartRecommendations -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
                 }
-                2 { 
-                    if ($offset -eq 0) {
-                        Invoke-InstallPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
-                    } else {
-                        Invoke-CreatePersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig
-                    }
+                "InstallPersona" {
+                    Invoke-InstallPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
                 }
-                3 { 
-                    if ($offset -eq 0) {
-                        Invoke-CreatePersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig
-                    } else {
-                        Invoke-EditPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
-                    }
+                "CreatePersona" {
+                    Invoke-CreatePersona -Catalog $Catalog -Config $Config -LogConfig $LogConfig
                 }
-                4 { 
-                    if ($offset -eq 0) {
-                        Invoke-EditPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
-                    } else {
-                        Invoke-ManageCatalog -Catalog $Catalog -Config $Config -LogConfig $LogConfig
-                    }
+                "EditPersona" {
+                    Invoke-EditPersona -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
                 }
-                5 { 
-                    if ($offset -eq 0) {
-                        Invoke-ManageCatalog -Catalog $Catalog -Config $Config -LogConfig $LogConfig
-                    } else {
-                        Invoke-ViewCatalog -Catalog $Catalog -Config $Config
-                    }
+                "ManageCatalog" {
+                    Invoke-ManageCatalog -Catalog $Catalog -Config $Config -LogConfig $LogConfig
                 }
-                6 { 
-                    if ($offset -eq 0) {
-                        Invoke-ViewCatalog -Catalog $Catalog -Config $Config
-                    } else {
-                        Write-Host "`nThank you for using Persona Installer!" -ForegroundColor Green
-                        break
-                    }
+                "ViewCatalog" {
+                    Invoke-ViewCatalog -Catalog $Catalog -Config $Config
                 }
-                7 {
-                    if ($offset -eq 0) {
-                        Write-Host "`nThank you for using Persona Installer!" -ForegroundColor Green
-                        break
-        } else {
-                        Write-Host "Invalid selection. Please choose 1-6." -ForegroundColor Yellow
-                    }
+                "Exit" {
+                    Write-Host "`nThank you for using Persona Installer!" -ForegroundColor Green
+                    $exitMenu = $true
                 }
-                0 { Write-Host "Invalid selection. Please choose 1-$($menuOptions.Count)." -ForegroundColor Yellow }
+                default {
+                    Write-Host "Unknown action: $action" -ForegroundColor Yellow
+                }
             }
         }
         catch {
@@ -242,7 +227,7 @@ function Invoke-MainMenu {
             
             $continue = Read-Host "Continue with the application? (Y/N)"
             if ($continue -notmatch '^(y|yes)$') {
-                break
+                $exitMenu = $true
             }
         }
     }
@@ -441,7 +426,7 @@ function Invoke-CreatePersona {
     Write-Log -Level 'INFO' -Message "Creating new persona: $personaName" -Config $LogConfig
     
     try {
-        $personas = Load-Personas -PersonaDir $PersonaDir
+        $personas = Import-Personas -PersonaDir $PersonaDir
         $sourcePersona = $null
         
         if ($personas.Count -gt 0) {
@@ -524,7 +509,7 @@ function Invoke-ManageCatalog {
     
     try {
         $updatedCatalog = Add-CatalogEntry -Catalog $Catalog -DisplayName $displayName -WingetId $wingetId
-        Save-Catalog -Catalog $updatedCatalog -CatalogPath $CatalogPath
+        Export-Catalog -Catalog $updatedCatalog -CatalogPath $CatalogPath
         
         Write-Log -Level 'INFO' -Message "Catalog entry added successfully" -Context @{ display_name = $displayName; winget_id = $wingetId } -Config $LogConfig
     }
@@ -550,8 +535,8 @@ function Invoke-ViewCatalog {
 
 # ---------------- Main Execution ----------------
 try {
-    # Load configuration
-    $config = Load-Configuration -ConfigPath $ConfigPath
+    # Import configuration
+    $config = Import-Configuration -ConfigPath $ConfigPath
     
     # Import modules (with feature flags from config)
     Import-PersonaModules -ModulesPath $ModulesDir -Config $config
@@ -575,8 +560,8 @@ try {
     
     # Load data
     Write-Verbose "Loading catalog and personas..."
-    $catalog = Load-Catalog -CatalogPath $CatalogPath
-    $personas = Load-Personas -PersonaDir $PersonaDir
+    $catalog = Import-Catalog -CatalogPath $CatalogPath
+    $personas = Import-Personas -PersonaDir $PersonaDir
     
     Write-Log -Level 'INFO' -Message "Data loaded" -Context @{ catalog_entries = $catalog.Count; personas_count = $personas.Count } -Config $logConfig
     
