@@ -7,6 +7,63 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v1.4.0] - 2025-12-14
+### Added
+- **Pester Testing Infrastructure**: Comprehensive test suite for all modules
+  - Unit tests for all 9 modules (`tests/Unit/`)
+  - Integration tests for end-to-end workflows (`tests/Integration/`)
+  - Test runner script with coverage support (`tests/Invoke-Tests.ps1`)
+  - Pester configuration file (`tests/pester.config.psd1`)
+
+- **CI/CD Pipeline**: GitHub Actions workflow (`.github/workflows/test.yml`)
+  - PSScriptAnalyzer linting on push/PR
+  - Automated unit test execution
+  - Integration test execution
+  - Test result artifact upload
+
+- **CompatibilityHelper Module**: PowerShell version abstraction layer
+  - `Get-SystemInfoInstance`: WMI/CIM compatibility wrapper
+  - `Get-ComputerSystemInfo`: System hardware info
+  - `Get-OperatingSystemInfo`: OS details
+  - `Get-LogicalDiskInfo`: Disk space info
+  - `Get-PowerShellInfo`: PS version/edition info
+  - `Test-IsAdministrator`: Admin check
+
+- **Input Validation Helper**: `Read-ValidatedInput` function in UIHelper
+  - Pattern matching validation
+  - Allowed values validation
+  - Max length validation
+  - Default value support
+
+### Changed
+- **API Modernization**: Replaced all deprecated `Get-WmiObject` calls with `Get-CimInstance` via CompatibilityHelper
+- **Verb Naming Standardization**:
+  - `Load-Catalog` → `Import-Catalog`
+  - `Save-Catalog` → `Export-Catalog`
+  - `Load-Personas` → `Import-Personas`
+  - `Confirm-PersonaName` → `Test-PersonaName`
+  - `Analyze-UserEnvironment` → `Get-UserEnvironmentAnalysis`
+  - `Determine-SystemCapabilities` → `Get-SystemCapabilities`
+
+- **Configurable Delays**: Hard-coded sleep values now use configuration
+  - `RetryDelaySeconds` parameter for `Install-AppWithRetry`
+  - `InstallPauseSeconds` setting for pause between installations
+  - `RetentionDays` parameter for `Initialize-Logging`
+
+- **Settings.psd1**: Reorganized with clear section headers and [PLANNED] markers
+
+### Fixed
+- **$input Variable Collision**: Renamed to `$userSelection` in UIHelper to avoid shadowing PowerShell automatic variable
+- **$OriginalList Undefined**: Added as parameter to `Show-DependencyAnalysis`
+- **Menu Offset Logic**: Replaced fragile offset-based switch with explicit action mapping
+- **Nested Function Scope**: Fixed state management in `Resolve-AppDependencies` using shared state hashtable
+
+### Technical Improvements
+- Full PSScriptAnalyzer compliance
+- Consistent error handling patterns across all modules
+- Enhanced inline documentation
+- Modular test structure for maintainability
+
 ## [v1.3.0] - 2025-10-05
 ### Added
 - **Smart Persona Recommendations Integration**: Fully functional menu option that analyzes your system and recommends optimal personas

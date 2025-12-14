@@ -1,161 +1,246 @@
-# Persona Installer 🎛️ v1.3.0
+# Persona Installer v1.4.0
 
-[![PowerShell](https://img.shields.io/badge/PowerShell-5%2B%20%7C%207-blue?logo=powershell)](https://learn.microsoft.com/powershell/)
+[![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207.x-blue?logo=powershell)](https://learn.microsoft.com/powershell/)
 [![Winget](https://img.shields.io/badge/works%20with-winget-success?logo=windows)](https://learn.microsoft.com/windows/package-manager/winget/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/24Skater/persona-installer)](https://github.com/24Skater/persona-installer/releases)
-[![Last commit](https://img.shields.io/github/last-commit/24Skater/persona-installer)](https://github.com/24Skater/persona-installer/commits/main)
-[![PowerShell Lint](https://github.com/24Skater/persona-installer/actions/workflows/powershell-lint.yml/badge.svg)](https://github.com/24Skater/persona-installer/actions/workflows/powershell-lint.yml)
+[![Tests](https://github.com/24Skater/persona-installer/actions/workflows/test.yml/badge.svg)](https://github.com/24Skater/persona-installer/actions/workflows/test.yml)
 
-A **intelligent, AI-powered PowerShell installer** for Windows.  
-Pick a **persona** (Dev, Finance Pro, IT Pro, Cybersecurity, Personal, Testbench) or get **smart recommendations** based on your system, and the script installs everything for you — with dependency management, enhanced progress tracking, and enterprise-grade features.
-
-## ✨ What's New in v1.3.0
-
-- ✅ **Smart Recommendations - LIVE**: AI-powered persona suggestions now fully integrated into the menu
-- ✅ **Dependency Resolution - LIVE**: Automatic dependency analysis before every installation with conflict detection
-- 🎯 **Dynamic Feature Loading**: Modules load based on configuration flags for optimal performance
-- 🔧 **PowerShell Compatibility**: All Unicode/emoji issues resolved for universal compatibility
-- 📈 **Production Ready**: Complete v1.2.0 feature integration with stable, tested codebase
+A modular, intelligent PowerShell installer for Windows. Pick a **persona** (Dev, Finance Pro, IT Pro, Cybersecurity, Personal, Testbench) or get **smart recommendations** based on your system analysis.
 
 ---
 
-## ✨ Features
+## What's New in v1.4.0
 
-- **Personas**: JSON-based profiles (`data/personas/*.json`) with "base" apps and "optional" apps
-- **Smart Recommendations**: AI-powered system analysis suggests optimal personas for your setup
-- **Dependency Management**: Automatic prerequisite resolution with conflict detection and system requirements validation
-- **Interactive menu**:
-  - 🤖 Smart persona recommendations
-  - 📦 Install from persona  
-  - ➕ Create or edit personas (no coding required)
-  - 🛠️ Manage catalog (add new apps by winget ID)
-  - 📋 View full catalog (exportable to CSV)
-- **Enhanced Progress**: Rich progress bars with ETA, speed monitoring, and performance analytics
-- **Dry Run mode**: preview installs without installing (`.\Main.ps1 -DryRun`)
-- **Advanced Logging**: per-app logs + structured session logs with performance metrics
-- **Configurable Settings**: customize behavior via external configuration file
-- **Intelligent Error Handling**: comprehensive validation, retry mechanisms, and graceful failure handling
+- **Testing Infrastructure**: Comprehensive Pester test suite with unit and integration tests
+- **CI/CD Pipeline**: GitHub Actions workflow with PSScriptAnalyzer linting
+- **Code Quality**: Configurable delays, validation helpers, consistent error handling
+- **API Modernization**: Full PowerShell 5.1 and 7.x compatibility with CIM abstraction
+- **Enhanced Catalog**: Dependency metadata, categories, and system requirements
 
 ---
 
-## 🚀 Quick Start
+## Features
 
-### Download as ZIP
-1. On GitHub → click **Code → Download ZIP**
-2. Extract it
-3. Open the **scripts** folder
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Persona-based Install** | Active | JSON profiles with base + optional apps |
+| **Smart Recommendations** | Active | AI-powered persona suggestions based on system analysis |
+| **Dependency Management** | Active | Automatic prerequisite resolution with conflict detection |
+| **Enhanced Progress** | Active | Rich progress bars with ETA and speed metrics |
+| **Dry Run Mode** | Active | Preview installations without changes |
+| **Structured Logging** | Active | JSON-formatted logs with performance metrics |
+| **Configurable Settings** | Active | External `Settings.psd1` for all behavior |
+| **Dual Catalog Format** | Active | Legacy (simple) and enhanced (with dependencies) |
+| **PowerShell Compatibility** | Active | Works on PS 5.1 and PS 7.x |
 
-### Run the installer
+### Planned Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Parallel Installation | Planned | Install multiple apps simultaneously |
+| Community Repository | Planned | Share and download community personas |
+| GUI Mode | Planned | Graphical interface option |
+| Auto-Updates | Planned | Check for installer updates |
+
+---
+
+## Quick Start
+
+### 1. Download
 
 ```powershell
-cd persona-installer\scripts
+# Clone or download ZIP from GitHub
+git clone https://github.com/24Skater/persona-installer.git
+cd persona-installer/scripts
+```
+
+### 2. Run
+
+```powershell
+# Set execution policy for session
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-# Preview only, no installs
+# Preview mode (no actual installs)
 .\Main.ps1 -DryRun
 
-# Real install
+# Normal installation
 .\Main.ps1
 
 # With custom configuration
 .\Main.ps1 -ConfigPath "C:\MyConfig\Settings.psd1"
 
-# Skip welcome message
+# Skip welcome banner
 .\Main.ps1 -NoWelcome
 ```
 
-Run as **Administrator** when prompted. This enables silent installs and optimal performance.
+> **Tip**: Run as Administrator for silent installations and optimal performance.
 
 ---
 
-## 🧑‍💻 Personas
+## Personas
 
-### Personal
-**Base:** Git, VS Code, GitHub Desktop, Chrome, Notepad++, PowerShell 7, VLC, WhatsApp, Zoom  
-**Optional:** Steam, Epic Games, Ubisoft Connect, WorshipTools Presenter, Microsoft 365, Adobe Creative Cloud, Python 3
+| Persona | Base Apps | Use Case |
+|---------|-----------|----------|
+| **Personal** | Git, VS Code, Chrome, VLC, WhatsApp, Zoom | General home use |
+| **Dev** | Git, VS Code, Node.js, Python, Docker, .NET SDK | Software development |
+| **Finance Pro** | Microsoft 365, Power BI, Teams, Slack | Financial/business work |
+| **IT Pro** | PowerShell 7, Sysinternals, Wireshark, PuTTY | System administration |
+| **Cybersec Pro** | Nmap, Wireshark, Burp Suite, Ghidra | Security testing |
+| **Testbench** | PowerShell 7, Python, Git | Minimal testing setup |
 
-### Testbench
-**Base:** PowerShell 7, Python 3, Git
-
-### Dev
-**Base:** Git, VS Code, GitHub Desktop, GitHub CLI, Node.js (LTS), Python 3, Java (OpenJDK 17), Docker Desktop, .NET SDK  
-**Optional:** Visual Studio 2022, Postman, DBeaver, Go, Rust, Maven, Gradle, Yarn, Azure CLI, AWS CLI, Google Cloud SDK
-
-### Finance Pro
-**Base:** Chrome, Microsoft 365, Adobe Reader, Zoom, Teams, Slack, Power BI Desktop  
-**Optional:** Tableau Public, Citrix Workspace
-
-### IT Pro
-**Base:** PowerShell 7, Git, Notepad++, 7-Zip, Everything, Nmap, Wireshark, Rufus, Ventoy, PuTTY  
-**Optional:** Sysinternals Suite (Store), Chrome, VLC, Zoom
-
-### Cybersecurity Pro
-**Base:** Nmap, Wireshark, Burp Suite Community, OWASP ZAP, Ghidra, OpenSSL, Python 3, Git  
-**Optional:** Docker CLI, Docker Desktop, GitHub CLI, Node.js (LTS)
+Each persona has optional apps you can select during installation.
 
 ---
 
-## 📚 Catalog
+## Configuration
 
-- Apps live in `data/catalog.json` with **enhanced dependency support**
-- **Legacy format**: Simple friendly name → winget ID mapping  
-- **Enhanced format**: Rich metadata with dependencies, conflicts, and system requirements
-- View them from the menu (`📋 View catalog`)
-- Export to CSV for review
-- Add new apps with dependency information (`🛠️ Manage catalog`)
+All settings are in `scripts/config/Settings.psd1`:
 
----
-
-## 🛠️ Requirements
-
-- Windows 10/11
-- PowerShell 5+ (PowerShell 7 recommended)
-- [winget (App Installer)](https://learn.microsoft.com/en-us/windows/package-manager/winget/) from Microsoft Store
-
----
-
-## 📝 Example Catalog Entries
-
-**Legacy format (still supported):**
-```json
-{
-  "Node.js (LTS)": "OpenJS.NodeJS.LTS",
-  "Microsoft Teams": "Microsoft.Teams"
+```powershell
+@{
+    Installation = @{
+        MaxRetries = 3              # Retry failed installations
+        SilentInstallFirst = $true  # Try silent mode first
+        RetryDelay = 2              # Seconds between retries
+        InstallPauseSeconds = 1     # Pause between apps
+    }
+    
+    Features = @{
+        DependencyChecking = $true      # Resolve dependencies
+        SmartRecommendations = $true    # Enable AI recommendations
+        EnhancedProgress = $true        # Rich progress bars
+        UseEnhancedCatalog = $true      # Use catalog-enhanced.json
+    }
+    
+    Logging = @{
+        LogRetentionDays = 30       # Auto-cleanup old logs
+        PerformanceLogging = $true  # Track install timing
+    }
 }
 ```
 
-**Enhanced format (v1.2.0+):**
+---
+
+## Catalog Formats
+
+### Legacy Format (Simple)
+
+```json
+{
+  "Git": "Git.Git",
+  "VS Code": "Microsoft.VisualStudioCode"
+}
+```
+
+### Enhanced Format (With Dependencies)
+
 ```json
 {
   "Docker Desktop": {
     "id": "Docker.DockerDesktop",
+    "category": "Development",
     "dependencies": ["WSL2"],
     "system_requirements": {
-      "min_windows_version": "10.0.19041",
       "min_memory_gb": 4,
       "requires_admin": true
     }
-  },
-  "GitHub CLI": {
-    "id": "GitHub.cli", 
-    "dependencies": ["Git"],
-    "category": "Development"
   }
 }
 ```
 
----
-
-## 🧰 Logs
-
-- **Per-app install logs**: `logs/<AppName>.log` with detailed winget output
-- **Structured session logs**: `logs/session-YYYYMMDD-HHMMSS.txt` with JSON performance data
-- **Performance analytics**: Installation timing, success rates, and system metrics
-- **Enhanced error tracking**: Comprehensive error context and troubleshooting information
+Both formats are supported. Enable enhanced catalog in Settings.psd1:
+```powershell
+Features = @{ UseEnhancedCatalog = $true }
+```
 
 ---
 
-## 📜 License
+## Project Structure
 
-MIT — free to use, modify, and share.
+```
+persona-installer/
+├── scripts/
+│   ├── Main.ps1                    # Entry point
+│   ├── config/
+│   │   └── Settings.psd1           # Configuration
+│   └── modules/
+│       ├── CatalogManager.psm1     # Catalog operations
+│       ├── PersonaManager.psm1     # Persona operations
+│       ├── InstallEngine.psm1      # Installation logic
+│       ├── DependencyManager.psm1  # Dependency resolution
+│       ├── UIHelper.psm1           # User interface
+│       ├── Logger.psm1             # Logging system
+│       ├── EnhancedProgressManager.psm1  # Rich progress
+│       ├── PersonaRecommendationEngine.psm1  # AI recommendations
+│       └── CompatibilityHelper.psm1  # PS5/7 compatibility
+├── data/
+│   ├── catalog.json                # Legacy catalog
+│   ├── catalog-enhanced.json       # Enhanced catalog
+│   └── personas/                   # Persona definitions
+├── tests/
+│   ├── Unit/                       # Unit tests
+│   ├── Integration/                # Integration tests
+│   └── Invoke-Tests.ps1            # Test runner
+├── docs/                           # Documentation
+└── logs/                           # Installation logs
+```
+
+---
+
+## Testing
+
+```powershell
+# Run unit tests
+.\tests\Invoke-Tests.ps1 -TestType Unit
+
+# Run all tests with coverage
+.\tests\Invoke-Tests.ps1 -TestType All -Coverage
+
+# Run integration tests
+.\tests\Invoke-Tests.ps1 -TestType Integration
+```
+
+> Requires Pester 5.0+: `Install-Module Pester -MinimumVersion 5.0.0 -Force`
+
+---
+
+## Logs
+
+| Log Type | Location | Content |
+|----------|----------|---------|
+| **App Logs** | `logs/<AppName>.log` | Detailed winget output |
+| **Session Logs** | `logs/session-*.txt` | Full session transcript |
+| **Performance** | Embedded in session | Timing and metrics |
+
+Logs are auto-cleaned after 30 days (configurable).
+
+---
+
+## Requirements
+
+- Windows 10/11
+- PowerShell 5.1+ (PowerShell 7 recommended)
+- [winget](https://learn.microsoft.com/windows/package-manager/winget/) (App Installer from Microsoft Store)
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Run tests: `.\tests\Invoke-Tests.ps1 -TestType All`
+4. Submit a pull request
+
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for details.
+
+---
+
+## License
+
+MIT - free to use, modify, and share.
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](docs/CHANGELOG.md) for version history.

@@ -1,199 +1,226 @@
 #
-# Settings.psd1 - Configuration file for Persona Installer
-# This file contains externalized configuration settings
+# Settings.psd1 - Configuration file for Persona Installer v1.4.0
+# All settings are optional - defaults are applied if not specified
 #
 
 @{
-    # Installation Settings
+    # ============================================================================
+    # INSTALLATION SETTINGS
+    # Controls how apps are installed via winget
+    # ============================================================================
     Installation = @{
-        # Maximum number of retry attempts for failed installations
+        # Maximum retry attempts for failed installations (default: 3)
         MaxRetries = 3
         
-        # Whether to try silent installation first (requires admin)
+        # Try silent installation first - requires admin (default: true)
         SilentInstallFirst = $true
         
-        # Delay between retry attempts (seconds)
+        # Seconds to wait between retry attempts (default: 2)
         RetryDelay = 2
         
-        # Pause between app installations (seconds, 0 to disable)
+        # Seconds to pause between app installations (0 = no pause)
         InstallPauseSeconds = 1
         
-        # Maximum parallel installations (future feature)
-        MaxConcurrency = 1
-        
-        # Timeout for individual app installations (seconds)
+        # Timeout for individual installations in seconds (default: 300)
         InstallTimeout = 300
+        
+        # [PLANNED] Maximum parallel installations (currently ignored)
+        MaxConcurrency = 1
     }
     
-    # Logging Settings
+    # ============================================================================
+    # LOGGING SETTINGS
+    # Controls log file behavior and retention
+    # ============================================================================
     Logging = @{
-        # Number of days to retain log files
+        # Days to retain log files before auto-cleanup (default: 30)
         LogRetentionDays = 30
         
-        # Default log level (DEBUG, INFO, WARN, ERROR)
+        # Log level: DEBUG, INFO, WARN, ERROR (default: INFO)
         DefaultLevel = 'INFO'
         
-        # Whether to enable verbose logging
+        # Enable verbose logging output (default: false)
         VerboseLogging = $false
         
-        # Whether to enable performance logging
+        # Log performance metrics for each installation (default: true)
         PerformanceLogging = $true
         
-        # Maximum log file size in MB before rotation
+        # [PLANNED] Maximum log file size in MB before rotation
         MaxLogSizeMB = 10
     }
     
-    # User Interface Settings
+    # ============================================================================
+    # USER INTERFACE SETTINGS
+    # Controls console output and user interaction
+    # ============================================================================
     UI = @{
-        # Whether to show welcome banner
+        # Show welcome banner on startup (default: true)
         ShowWelcome = $true
         
-        # Whether to show detailed installation results by default
+        # Show detailed per-app results after installation (default: false)
         ShowDetailedResults = $false
         
-        # Whether to use colors in console output
+        # Use colored console output (default: true)
         UseColors = $true
         
-        # Progress update frequency (milliseconds)
+        # Progress update interval in milliseconds (default: 1000)
         ProgressUpdateInterval = 1000
         
-        # Whether to pause after operations for user review
+        # Pause for user review after operations (default: true)
         PauseAfterOperations = $true
     }
     
-    # System Settings
+    # ============================================================================
+    # SYSTEM SETTINGS
+    # Controls system-level behavior and prerequisites
+    # ============================================================================
     System = @{
-        # Whether to require administrator privileges
+        # Require administrator privileges (default: true)
         RequireAdmin = $true
         
-        # Whether to automatically elevate if not admin
+        # Attempt auto-elevation if not admin (default: true)
         AutoElevate = $true
         
-        # Whether to check for winget availability on startup
+        # Verify winget is available on startup (default: true)
         CheckWingetAvailability = $true
         
-        # Minimum required winget version
+        # Minimum winget version required (default: 1.0.0)
         MinWingetVersion = '1.0.0'
     }
     
-    # Validation Settings
+    # ============================================================================
+    # VALIDATION SETTINGS
+    # Controls input validation and safety checks
+    # ============================================================================
     Validation = @{
-        # Maximum length for persona names
+        # Maximum characters for persona names (default: 50)
         MaxPersonaNameLength = 50
         
-        # Maximum length for app display names
+        # Maximum characters for app display names (default: 100)
         MaxAppNameLength = 100
         
-        # Whether to validate winget IDs when adding to catalog
+        # Validate winget IDs when adding to catalog (default: true)
         ValidateWingetIds = $true
         
-        # Whether to backup personas before editing
+        # Create backup before editing personas (default: true)
         BackupPersonasOnEdit = $true
     }
     
-    # Path Settings (relative to script root)
+    # ============================================================================
+    # PATH SETTINGS
+    # Directory names relative to script root
+    # ============================================================================
     Paths = @{
-        # Data directory name
         DataDir = 'data'
-        
-        # Personas subdirectory name
         PersonasDir = 'personas'
-        
-        # Logs directory name
         LogsDir = 'logs'
-        
-        # Configuration directory name
         ConfigDir = 'config'
-        
-        # Backup directory name
         BackupDir = 'backup'
     }
     
-    # Feature Flags
+    # ============================================================================
+    # FEATURE FLAGS
+    # Toggle optional features on/off
+    # ============================================================================
     Features = @{
-        # Enable dependency checking (v1.2.0 feature)
+        # === ACTIVE FEATURES ===
+        
+        # Automatic dependency resolution before installation
         DependencyChecking = $true
         
-        # Enable smart persona recommendations (v1.2.0 feature)
+        # AI-powered persona recommendations based on system analysis
         SmartRecommendations = $true
         
-        # Enable enhanced progress indicators (v1.2.0 feature)
+        # Rich progress bars with ETA and speed metrics
         EnhancedProgress = $true
         
-        # Use enhanced catalog with dependency metadata (v1.4.0 feature)
-        # When enabled, uses catalog-enhanced.json instead of catalog.json
+        # Use catalog-enhanced.json with dependency metadata
         UseEnhancedCatalog = $true
         
-        # Enable installation queueing (future feature)
+        # === PLANNED FEATURES (not yet implemented) ===
+        
+        # [PLANNED] Queue installations for sequential processing
         InstallationQueue = $false
         
-        # Enable community persona repository (future feature)
+        # [PLANNED] Download/share personas from community repository
         CommunityRepository = $false
         
-        # Enable GUI mode (future feature)
+        # [PLANNED] Graphical user interface mode
         GuiMode = $false
         
-        # Enable parallel installations (future feature)
+        # [PLANNED] Install multiple apps simultaneously
         ParallelInstallation = $false
     }
     
-    # Error Handling Settings
+    # ============================================================================
+    # ERROR HANDLING SETTINGS
+    # Controls behavior when errors occur
+    # ============================================================================
     ErrorHandling = @{
-        # Whether to continue on non-critical errors
+        # Continue processing on non-critical errors (default: true)
         ContinueOnError = $true
         
-        # Whether to show stack traces for errors
+        # Show stack traces for debugging (default: false)
         ShowStackTrace = $false
         
-        # Whether to prompt user on errors
+        # Prompt user when errors occur (default: true)
         PromptOnError = $true
         
-        # Maximum consecutive errors before aborting
+        # Stop after this many consecutive errors (default: 5)
         MaxConsecutiveErrors = 5
     }
     
-    # Performance Settings
+    # ============================================================================
+    # PERFORMANCE SETTINGS
+    # Controls performance monitoring and optimization
+    # ============================================================================
     Performance = @{
-        # Whether to enable performance monitoring
+        # Track and display performance metrics (default: true)
         EnableMonitoring = $true
         
-        # Whether to show performance metrics
+        # Show metrics in console output (default: false)
         ShowMetrics = $false
         
-        # Whether to optimize for memory usage
+        # [PLANNED] Optimize for low memory systems
         OptimizeMemory = $false
         
-        # Cache timeout in minutes
+        # [PLANNED] Cache timeout in minutes
         CacheTimeout = 60
     }
     
-    # Security Settings
+    # ============================================================================
+    # SECURITY SETTINGS
+    # [PLANNED] Security features for future versions
+    # ============================================================================
     Security = @{
-        # Whether to validate digital signatures (future feature)
+        # [PLANNED] Validate digital signatures on packages
         ValidateSignatures = $false
         
-        # Whether to scan downloaded files (future feature)
+        # [PLANNED] Scan downloaded files for malware
         ScanDownloads = $false
         
-        # Whether to use secure connections only
+        # Only use HTTPS connections (default: true)
         SecureConnectionsOnly = $true
         
-        # Trusted publishers list (future feature)
+        # [PLANNED] List of trusted package publishers
         TrustedPublishers = @()
     }
     
-    # Update Settings (future feature)
+    # ============================================================================
+    # UPDATE SETTINGS
+    # [PLANNED] Auto-update features for future versions
+    # ============================================================================
     Updates = @{
-        # Whether to check for updates automatically
+        # [PLANNED] Check for updates automatically
         AutoCheckUpdates = $false
         
-        # Update check frequency in days
+        # [PLANNED] Days between update checks
         UpdateCheckInterval = 7
         
-        # Whether to include pre-release versions
+        # [PLANNED] Include pre-release versions
         IncludePreRelease = $false
         
-        # Update source URL
+        # [PLANNED] Update source URL
         UpdateSource = 'https://api.github.com/repos/24Skater/persona-installer/releases'
     }
 }
