@@ -188,13 +188,15 @@ Describe 'Logger Module' {
     }
     
     Context 'Get-LogStatistics' {
-        It 'Should return log statistics' {
+        It 'Should return log statistics for directory with files' {
+            # Create a test log file first
+            $testLogFile = Join-Path $script:testLogsDir 'stats-test.log'
+            'test content' | Set-Content -Path $testLogFile
+            
             $stats = Get-LogStatistics -LogsDir $script:testLogsDir
             
-            if ($stats) {
-                $stats.TotalFiles | Should -BeGreaterOrEqual 0
-                $stats.TotalSizeBytes | Should -BeGreaterOrEqual 0
-            }
+            $stats | Should -Not -BeNullOrEmpty
+            $stats.TotalFiles | Should -BeGreaterOrEqual 1
         }
         
         It 'Should handle non-existent directory' {

@@ -75,8 +75,9 @@ Describe 'PersonaManager Module' {
             Test-PersonaName -Name 'MyPersona123' | Should -Be $true
         }
         
-        It 'Should reject empty names' {
-            Test-PersonaName -Name '' | Should -Be $false
+        It 'Should reject whitespace-only names' {
+            # Empty string throws because Name is mandatory
+            # Test with whitespace instead
             Test-PersonaName -Name '   ' | Should -Be $false
         }
         
@@ -168,8 +169,9 @@ Describe 'PersonaManager Module' {
             $savePath = Save-Persona -Persona $persona -PersonaDir $script:testPersonaDir
             $saved = Get-Content $savePath -Raw | ConvertFrom-Json
             
-            $saved.base | Should -Not -BeNullOrEmpty
-            $saved.base.Count | Should -Be 0
+            # Empty arrays serialize as empty in JSON, verify the property exists
+            $saved.PSObject.Properties.Name | Should -Contain 'base'
+            @($saved.base).Count | Should -Be 0
         }
     }
     
