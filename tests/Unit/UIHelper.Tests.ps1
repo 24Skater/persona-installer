@@ -106,5 +106,42 @@ Describe 'UIHelper Module' {
             { Show-WelcomeMessage -Version '1.3.0' } | Should -Not -Throw
         }
     }
+    
+    Context 'Show-InstallationHistoryRecords' {
+        It 'Should display empty history without error' {
+            { Show-InstallationHistoryRecords -Records @() -Title 'Test' } | Should -Not -Throw
+        }
+        
+        It 'Should display records with multiple entries' {
+            $records = @(
+                [PSCustomObject]@{
+                    timestamp = (Get-Date).ToString('o')
+                    personaName = 'dev'
+                    apps = @(@{ name = 'Git' })
+                    successful = 1
+                    failed = 0
+                },
+                [PSCustomObject]@{
+                    timestamp = (Get-Date).AddDays(-1).ToString('o')
+                    personaName = 'personal'
+                    apps = @(@{ name = 'Chrome' }, @{ name = 'VLC' })
+                    successful = 2
+                    failed = 0
+                }
+            )
+            
+            { Show-InstallationHistoryRecords -Records $records -Title 'Test History' } | Should -Not -Throw
+        }
+        
+        It 'Should handle records with missing fields gracefully' {
+            $records = @(
+                [PSCustomObject]@{
+                    personaName = 'incomplete'
+                }
+            )
+            
+            { Show-InstallationHistoryRecords -Records $records } | Should -Not -Throw
+        }
+    }
 }
 

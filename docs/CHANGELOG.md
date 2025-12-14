@@ -7,6 +7,57 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v1.5.0] - 2025-12-14
+### Added
+- **Installation History Module**: Track all persona installations
+  - `Initialize-InstallationHistory`: Create/load history file
+  - `Add-InstallationRecord`: Record new installations with timing
+  - `Get-InstallationHistory`: Query history with filters (days, persona)
+  - `Export-InstallationHistory`: Export to CSV or JSON
+  - `Clear-InstallationHistory`: Purge old records
+
+- **Update Manager Module**: App update detection and management
+  - `Get-InstalledApps`: List installed apps from winget
+  - `Get-AvailableUpdates`: Check for available updates
+  - `Get-PersonaUpdateStatus`: Check updates for persona apps only
+  - `Format-UpdateList`: Display available updates
+  - `Update-App`: Update single app via winget
+  - `Update-PersonaApps`: Batch update all persona apps
+  - `Update-AllApps`: Update everything with available updates
+
+- **Persona Backup/Restore**: Export and import personas
+  - `Export-PersonaBackup`: Create timestamped ZIP backups
+  - `Import-PersonaBackup`: Restore from backup with conflict handling
+  - `Get-PersonaBackups`: List available backup files
+
+- **Installation Profiles**: Save and reuse app selections
+  - `Save-InstallationProfile`: Save selected optional apps
+  - `Get-InstallationProfile`: Load saved profile
+  - `Remove-InstallationProfile`: Delete saved profile
+
+- **Enhanced Visual Feedback**: Consistent status icons
+  - `Get-StatusIcon`: Get icon and color for status types
+  - `Write-StatusLine`: Write formatted status messages
+  - Configurable status colors in `Settings.psd1`
+
+- **New Menu Options**:
+  - View installation history with filtering
+  - Check for updates (all apps or specific persona)
+  - Backup/Restore personas submenu
+
+### Changed
+- Installation now records history automatically
+- Optional app selection offers saved profile if available
+- Post-installation prompt to save configuration as profile
+- `Settings.psd1` includes new `EnableUpdates` feature flag
+- `Settings.psd1` includes `HistoryDir` path configuration
+- `Settings.psd1` includes `StatusColors` for accessibility
+
+### Fixed
+- N/A
+
+---
+
 ## [v1.4.0] - 2025-12-14
 ### Added
 - **Pester Testing Infrastructure**: Comprehensive test suite for all modules

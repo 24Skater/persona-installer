@@ -1,4 +1,4 @@
-# Persona Installer v1.4.0
+# Persona Installer v1.5.0
 
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207.x-blue?logo=powershell)](https://learn.microsoft.com/powershell/)
 [![Winget](https://img.shields.io/badge/works%20with-winget-success?logo=windows)](https://learn.microsoft.com/windows/package-manager/winget/)
@@ -9,13 +9,19 @@ A modular, intelligent PowerShell installer for Windows. Pick a **persona** (Dev
 
 ---
 
-## What's New in v1.4.0
+## What's New in v1.5.0
 
-- **Testing Infrastructure**: Comprehensive Pester test suite with unit and integration tests
-- **CI/CD Pipeline**: GitHub Actions workflow with PSScriptAnalyzer linting
-- **Code Quality**: Configurable delays, validation helpers, consistent error handling
-- **API Modernization**: Full PowerShell 5.1 and 7.x compatibility with CIM abstraction
-- **Enhanced Catalog**: Dependency metadata, categories, and system requirements
+- **Installation History**: Track all persona installations with timestamps and results
+- **App Update Management**: Check for and apply updates to installed apps
+- **Persona Backup/Restore**: Export and import persona configurations
+- **Installation Profiles**: Save and reuse optional app selections
+- **Enhanced Visual Feedback**: Consistent status icons and colors throughout
+
+### Previous Release (v1.4.0)
+
+- Testing Infrastructure with Pester test suite
+- CI/CD Pipeline with GitHub Actions
+- Full PowerShell 5.1 and 7.x compatibility
 
 ---
 
@@ -27,6 +33,10 @@ A modular, intelligent PowerShell installer for Windows. Pick a **persona** (Dev
 | **Smart Recommendations** | Active | AI-powered persona suggestions based on system analysis |
 | **Dependency Management** | Active | Automatic prerequisite resolution with conflict detection |
 | **Enhanced Progress** | Active | Rich progress bars with ETA and speed metrics |
+| **Installation History** | Active | Track installations with timestamps and results |
+| **App Update Management** | Active | Check for and apply updates via winget |
+| **Persona Backup/Restore** | Active | Export and import persona configurations |
+| **Installation Profiles** | Active | Save and reuse optional app selections |
 | **Dry Run Mode** | Active | Preview installations without changes |
 | **Structured Logging** | Active | JSON-formatted logs with performance metrics |
 | **Configurable Settings** | Active | External `Settings.psd1` for all behavior |
@@ -40,7 +50,7 @@ A modular, intelligent PowerShell installer for Windows. Pick a **persona** (Dev
 | Parallel Installation | Planned | Install multiple apps simultaneously |
 | Community Repository | Planned | Share and download community personas |
 | GUI Mode | Planned | Graphical interface option |
-| Auto-Updates | Planned | Check for installer updates |
+| Enterprise Deployment | Planned | MSI installer, GPO support |
 
 ---
 

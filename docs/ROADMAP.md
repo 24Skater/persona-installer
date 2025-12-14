@@ -38,22 +38,22 @@
 
 ## Roadmap
 
-### Phase 1: v1.5.0 - User Experience Enhancements
-**Timeline: Q1 2026**
+### Phase 1: v1.5.0 - User Experience Enhancements ✅ COMPLETE
+**Released: December 2025**
 
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| **App Update Management** | HIGH | Check for updates to installed apps, batch update functionality |
-| **Installation History** | HIGH | Track what was installed when, with rollback capability |
-| **Persona Backup/Restore** | MEDIUM | Export/import personas as portable files |
-| **Installation Profiles** | MEDIUM | Save installation preferences per persona |
-| **Colored Status Icons** | LOW | Better visual feedback in console |
+| Feature | Priority | Status |
+|---------|----------|--------|
+| **App Update Management** | HIGH | ✅ Complete |
+| **Installation History** | HIGH | ✅ Complete |
+| **Persona Backup/Restore** | MEDIUM | ✅ Complete |
+| **Installation Profiles** | MEDIUM | ✅ Complete |
+| **Colored Status Icons** | LOW | ✅ Complete |
 
 #### Technical Tasks
-- [ ] Add `Get-InstalledApps` function to track installations
-- [ ] Create `Update-PersonaApps` for batch updates
-- [ ] Implement backup directory with timestamped exports
-- [ ] Add installation history JSON log
+- [x] Add `Get-InstalledApps` function to track installations
+- [x] Create `Update-PersonaApps` for batch updates
+- [x] Implement backup directory with timestamped exports
+- [x] Add installation history JSON log
 
 ---
 
@@ -188,6 +188,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| v1.5.0 | Dec 2025 | Installation history, updates, backup/restore, profiles |
 | v1.4.0 | Dec 2025 | Testing infrastructure, API modernization, code quality |
 | v1.3.0 | Oct 2025 | Smart recommendations, dependency management integration |
 | v1.2.0 | Oct 2025 | Unicode fixes, stability improvements |

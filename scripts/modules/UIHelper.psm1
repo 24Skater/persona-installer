@@ -3,6 +3,83 @@ UIHelper.psm1 - User interface utilities module
 Handles user interaction, menus, and app selection
 #>
 
+# Status icon definitions for consistent visual feedback
+$script:StatusIcons = @{
+    Success = @{ Icon = '[OK]'; Color = 'Green' }
+    Failed  = @{ Icon = '[X]'; Color = 'Red' }
+    Warning = @{ Icon = '[!]'; Color = 'Yellow' }
+    Info    = @{ Icon = '[i]'; Color = 'Cyan' }
+    Pending = @{ Icon = '[.]'; Color = 'Gray' }
+    Skip    = @{ Icon = '[-]'; Color = 'DarkGray' }
+}
+
+function Get-StatusIcon {
+    <#
+    .SYNOPSIS
+        Get status icon and color for consistent visual feedback
+    .DESCRIPTION
+        Returns icon string and color for different status types
+    .PARAMETER Status
+        Status type: Success, Failed, Warning, Info, Pending, Skip
+    .PARAMETER IconOnly
+        Return only the icon string without color info
+    .OUTPUTS
+        Hashtable with Icon and Color, or just string if IconOnly
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Success', 'Failed', 'Warning', 'Info', 'Pending', 'Skip')]
+        [string]$Status,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$IconOnly
+    )
+    
+    $statusInfo = $script:StatusIcons[$Status]
+    
+    if ($IconOnly) {
+        return $statusInfo.Icon
+    }
+    
+    return $statusInfo
+}
+
+function Write-StatusLine {
+    <#
+    .SYNOPSIS
+        Write a status line with icon and color
+    .DESCRIPTION
+        Outputs formatted status message with appropriate icon and color
+    .PARAMETER Status
+        Status type
+    .PARAMETER Message
+        Message to display
+    .PARAMETER NoNewLine
+        Don't add newline after message
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Success', 'Failed', 'Warning', 'Info', 'Pending', 'Skip')]
+        [string]$Status,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$NoNewLine
+    )
+    
+    $statusInfo = Get-StatusIcon -Status $Status
+    
+    if ($NoNewLine) {
+        Write-Host "$($statusInfo.Icon) $Message" -ForegroundColor $statusInfo.Color -NoNewline
+    } else {
+        Write-Host "$($statusInfo.Icon) $Message" -ForegroundColor $statusInfo.Color
+    }
+}
+
 function Select-Apps {
     <#
     .SYNOPSIS
@@ -241,25 +318,25 @@ function Show-InstallationSummary {
     
     if ($BaseApps.Count -gt 0) {
         Write-Host "`nBase apps ($($BaseApps.Count)):" -ForegroundColor Yellow
-        $BaseApps | ForEach-Object { Write-Host "  + $_" -ForegroundColor Green }
+        $BaseApps | ForEach-Object { Write-StatusLine -Status 'Pending' -Message $_ }
     }
     
     if ($OptionalApps.Count -gt 0) {
         Write-Host "`nOptional apps ($($OptionalApps.Count)):" -ForegroundColor Yellow
-        $OptionalApps | ForEach-Object { Write-Host "  + $_" -ForegroundColor Green }
+        $OptionalApps | ForEach-Object { Write-StatusLine -Status 'Pending' -Message $_ }
     }
     
     if ($totalApps -eq 0) {
-        Write-Host "`nNo apps selected for installation." -ForegroundColor Yellow
+        Write-StatusLine -Status 'Warning' -Message "No apps selected for installation."
         return $false
     }
     
     Write-Host ""
     if ($DryRun) {
-        Write-Host "This is a DRY RUN - no apps will actually be installed." -ForegroundColor Yellow
+        Write-StatusLine -Status 'Info' -Message "This is a DRY RUN - no apps will actually be installed."
         $response = Read-Host "Continue with preview? (Y/N)"
     } else {
-        Write-Host "Ready to install $totalApps apps." -ForegroundColor Green
+        Write-StatusLine -Status 'Success' -Message "Ready to install $totalApps apps."
         $response = Read-Host "Continue with installation? (Y/N)"
     }
     
@@ -559,5 +636,91 @@ function Read-ValidatedInput {
     return $userInput
 }
 
+function Show-InstallationHistoryRecords {
+    <#
+    .SYNOPSIS
+        Display installation history records in formatted table
+    .DESCRIPTION
+        Shows history records with pagination support
+    .PARAMETER Records
+        Array of installation history records
+    .PARAMETER Title
+        Title to display above the history
+    .PARAMETER PageSize
+        Number of records per page (default: 10)
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [array]$Records,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$Title = "Installation History",
+        
+        [Parameter(Mandatory = $false)]
+        [int]$PageSize = 10
+    )
+    
+    Write-Host "`n$Title" -ForegroundColor Cyan
+    Write-Host ("=" * 60) -ForegroundColor Gray
+    
+    if ($Records.Count -eq 0) {
+        Write-Host "`nNo installation records found." -ForegroundColor Yellow
+        return
+    }
+    
+    Write-Host "Total records: $($Records.Count)" -ForegroundColor White
+    Write-Host ""
+    
+    # Display header
+    $headerFormat = "{0,-20} {1,-15} {2,-8} {3,-8} {4,-10}"
+    Write-Host ($headerFormat -f "Date", "Persona", "Apps", "Success", "Failed") -ForegroundColor Yellow
+    Write-Host ("-" * 60) -ForegroundColor Gray
+    
+    # Paginate results
+    $totalPages = [Math]::Ceiling($Records.Count / $PageSize)
+    $currentPage = 0
+    
+    do {
+        $startIndex = $currentPage * $PageSize
+        $endIndex = [Math]::Min($startIndex + $PageSize, $Records.Count)
+        $pageRecords = $Records[$startIndex..($endIndex - 1)]
+        
+        foreach ($record in $pageRecords) {
+            $timestamp = if ($record.timestamp) {
+                try { [DateTime]::Parse($record.timestamp).ToString("yyyy-MM-dd HH:mm") } catch { "Unknown" }
+            } else { "Unknown" }
+            
+            $personaName = if ($record.personaName) { 
+                if ($record.personaName.Length -gt 13) { $record.personaName.Substring(0, 12) + "..." } else { $record.personaName }
+            } else { "Unknown" }
+            
+            $appCount = if ($record.apps) { $record.apps.Count } else { 0 }
+            $successful = if ($record.successful -ne $null) { $record.successful } else { 0 }
+            $failed = if ($record.failed -ne $null) { $record.failed } else { 0 }
+            
+            $color = if ($failed -gt 0) { "Yellow" } else { "White" }
+            Write-Host ($headerFormat -f $timestamp, $personaName, $appCount, $successful, $failed) -ForegroundColor $color
+        }
+        
+        # Pagination controls
+        if ($totalPages -gt 1) {
+            Write-Host ""
+            Write-Host "Page $($currentPage + 1) of $totalPages" -ForegroundColor Gray
+            
+            if ($currentPage -lt $totalPages - 1) {
+                $nav = Read-Host "Press Enter for next page, 'q' to quit"
+                if ($nav -eq 'q') { break }
+                $currentPage++
+            } else {
+                break
+            }
+        } else {
+            break
+        }
+    } while ($true)
+}
+
 # Export functions
-Export-ModuleMember -Function Select-Apps, Show-Menu, Show-PersonaList, Show-InstallationSummary, Show-Progress, Wait-ForUser, Show-WelcomeMessage, Confirm-Action, Show-Error, Show-Success, Show-Warning, Read-ValidatedInput
+Export-ModuleMember -Function Select-Apps, Show-Menu, Show-PersonaList, Show-InstallationSummary, Show-Progress, Wait-ForUser, Show-WelcomeMessage, Confirm-Action, Show-Error, Show-Success, Show-Warning, Read-ValidatedInput, Show-InstallationHistoryRecords, Get-StatusIcon, Write-StatusLine

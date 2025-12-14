@@ -1,5 +1,5 @@
 #
-# Settings.psd1 - Configuration file for Persona Installer v1.4.0
+# Settings.psd1 - Configuration file for Persona Installer v1.5.0
 # All settings are optional - defaults are applied if not specified
 #
 
@@ -68,6 +68,16 @@
         
         # Pause for user review after operations (default: true)
         PauseAfterOperations = $true
+        
+        # Status icon colors (for accessibility customization)
+        StatusColors = @{
+            Success = 'Green'
+            Failed = 'Red'
+            Warning = 'Yellow'
+            Info = 'Cyan'
+            Pending = 'Gray'
+            Skip = 'DarkGray'
+        }
     }
     
     # ============================================================================
@@ -116,6 +126,7 @@
         LogsDir = 'logs'
         ConfigDir = 'config'
         BackupDir = 'backup'
+        HistoryDir = 'history'
     }
     
     # ============================================================================
@@ -136,6 +147,9 @@
         
         # Use catalog-enhanced.json with dependency metadata
         UseEnhancedCatalog = $true
+        
+        # Enable app update checking and management (v1.5.0 feature)
+        EnableUpdates = $true
         
         # === PLANNED FEATURES (not yet implemented) ===
         

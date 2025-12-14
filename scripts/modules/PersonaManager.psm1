@@ -306,5 +306,350 @@ function Get-PersonaSummary {
     return $summary -join "`n"
 }
 
+function Export-PersonaBackup {
+    <#
+    .SYNOPSIS
+        Export personas to a backup archive
+    .DESCRIPTION
+        Creates a timestamped ZIP file containing persona JSON files and metadata
+    .PARAMETER PersonaDir
+        Directory containing persona files
+    .PARAMETER BackupDir
+        Directory to store backup files
+    .PARAMETER PersonaName
+        Optional specific persona to backup (null = all)
+    .OUTPUTS
+        Path to created backup file
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PersonaDir,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$BackupDir,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$PersonaName = ""
+    )
+    
+    try {
+        # Ensure backup directory exists
+        if (-not (Test-Path $BackupDir)) {
+            New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
+        }
+        
+        # Create temp directory for backup contents
+        $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+        $backupName = if ($PersonaName) { "persona-$PersonaName-$timestamp" } else { "personas-all-$timestamp" }
+        $tempDir = Join-Path $env:TEMP $backupName
+        
+        if (Test-Path $tempDir) {
+            Remove-Item $tempDir -Recurse -Force
+        }
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+        
+        # Copy persona files
+        if ($PersonaName) {
+            $sourceFile = Join-Path $PersonaDir "$PersonaName.json"
+            if (-not (Test-Path $sourceFile)) {
+                throw "Persona '$PersonaName' not found"
+            }
+            Copy-Item $sourceFile -Destination $tempDir
+        } else {
+            $personaFiles = Get-ChildItem -Path $PersonaDir -Filter '*.json' -ErrorAction SilentlyContinue
+            if ($personaFiles.Count -eq 0) {
+                throw "No persona files found in $PersonaDir"
+            }
+            foreach ($file in $personaFiles) {
+                Copy-Item $file.FullName -Destination $tempDir
+            }
+        }
+        
+        # Create metadata file
+        $metadata = [PSCustomObject]@{
+            version = '1.0'
+            timestamp = (Get-Date).ToString('o')
+            personaName = if ($PersonaName) { $PersonaName } else { 'all' }
+            fileCount = (Get-ChildItem $tempDir -Filter '*.json').Count
+        }
+        $metadata | ConvertTo-Json | Set-Content -Path (Join-Path $tempDir 'backup-metadata.json') -Encoding UTF8
+        
+        # Create ZIP archive
+        $backupPath = Join-Path $BackupDir "$backupName.zip"
+        Compress-Archive -Path "$tempDir\*" -DestinationPath $backupPath -Force
+        
+        # Cleanup temp directory
+        Remove-Item $tempDir -Recurse -Force
+        
+        Write-Verbose "Created backup: $backupPath"
+        return $backupPath
+    }
+    catch {
+        Write-Warning "Failed to create backup: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+function Import-PersonaBackup {
+    <#
+    .SYNOPSIS
+        Restore personas from a backup archive
+    .DESCRIPTION
+        Extracts and restores persona files from a backup ZIP
+    .PARAMETER BackupPath
+        Path to the backup ZIP file
+    .PARAMETER PersonaDir
+        Directory to restore personas to
+    .PARAMETER Force
+        Overwrite existing personas without prompting
+    .OUTPUTS
+        Number of personas restored
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BackupPath,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$PersonaDir,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$Force
+    )
+    
+    try {
+        if (-not (Test-Path $BackupPath)) {
+            throw "Backup file not found: $BackupPath"
+        }
+        
+        # Create temp directory for extraction
+        $tempDir = Join-Path $env:TEMP "persona-restore-$(Get-Date -Format 'yyyyMMddHHmmss')"
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+        
+        # Extract backup
+        Expand-Archive -Path $BackupPath -DestinationPath $tempDir -Force
+        
+        # Read metadata if present
+        $metadataPath = Join-Path $tempDir 'backup-metadata.json'
+        if (Test-Path $metadataPath) {
+            $metadata = Get-Content $metadataPath -Raw | ConvertFrom-Json
+            Write-Verbose "Restoring backup from: $($metadata.timestamp)"
+        }
+        
+        # Restore persona files
+        $personaFiles = Get-ChildItem -Path $tempDir -Filter '*.json' | Where-Object { $_.Name -ne 'backup-metadata.json' }
+        $restoredCount = 0
+        
+        foreach ($file in $personaFiles) {
+            $destPath = Join-Path $PersonaDir $file.Name
+            
+            if ((Test-Path $destPath) -and -not $Force) {
+                $overwrite = Read-Host "Persona '$($file.BaseName)' already exists. Overwrite? (Y/N)"
+                if ($overwrite -notmatch '^(y|yes)$') {
+                    Write-Host "Skipped: $($file.BaseName)" -ForegroundColor Yellow
+                    continue
+                }
+            }
+            
+            Copy-Item $file.FullName -Destination $destPath -Force
+            $restoredCount++
+            Write-Host "Restored: $($file.BaseName)" -ForegroundColor Green
+        }
+        
+        # Cleanup
+        Remove-Item $tempDir -Recurse -Force
+        
+        Write-Verbose "Restored $restoredCount persona(s)"
+        return $restoredCount
+    }
+    catch {
+        Write-Warning "Failed to restore backup: $($_.Exception.Message)"
+        return 0
+    }
+}
+
+function Get-PersonaBackups {
+    <#
+    .SYNOPSIS
+        List available persona backups
+    .DESCRIPTION
+        Returns list of backup files in the backup directory
+    .PARAMETER BackupDir
+        Directory containing backup files
+    .OUTPUTS
+        Array of backup info objects
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BackupDir
+    )
+    
+    try {
+        if (-not (Test-Path $BackupDir)) {
+            return @()
+        }
+        
+        $backups = @()
+        $zipFiles = Get-ChildItem -Path $BackupDir -Filter '*.zip' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending
+        
+        foreach ($file in $zipFiles) {
+            $backups += [PSCustomObject]@{
+                Name = $file.Name
+                Path = $file.FullName
+                Date = $file.LastWriteTime
+                SizeMB = [Math]::Round($file.Length / 1MB, 2)
+            }
+        }
+        
+        return $backups
+    }
+    catch {
+        Write-Warning "Failed to list backups: $($_.Exception.Message)"
+        return @()
+    }
+}
+
+function Save-InstallationProfile {
+    <#
+    .SYNOPSIS
+        Save installation profile for a persona
+    .DESCRIPTION
+        Saves the selected optional apps and settings used for a persona installation
+    .PARAMETER PersonaName
+        Name of the persona
+    .PARAMETER SelectedOptionalApps
+        Array of selected optional app names
+    .PARAMETER ProfileDir
+        Directory to store profile files
+    .PARAMETER Settings
+        Installation settings used
+    .OUTPUTS
+        Path to saved profile
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PersonaName,
+        
+        [Parameter(Mandatory = $false)]
+        [array]$SelectedOptionalApps = @(),
+        
+        [Parameter(Mandatory = $true)]
+        [string]$ProfileDir,
+        
+        [Parameter(Mandatory = $false)]
+        [hashtable]$Settings = @{}
+    )
+    
+    try {
+        # Ensure profile directory exists
+        if (-not (Test-Path $ProfileDir)) {
+            New-Item -ItemType Directory -Path $ProfileDir -Force | Out-Null
+        }
+        
+        $profile = [PSCustomObject]@{
+            version = '1.0'
+            personaName = $PersonaName
+            selectedOptionalApps = @($SelectedOptionalApps)
+            settings = $Settings
+            savedAt = (Get-Date).ToString('o')
+        }
+        
+        $profilePath = Join-Path $ProfileDir "$PersonaName.json"
+        $profile | ConvertTo-Json -Depth 5 | Set-Content -Path $profilePath -Encoding UTF8
+        
+        Write-Verbose "Saved installation profile: $profilePath"
+        return $profilePath
+    }
+    catch {
+        Write-Warning "Failed to save installation profile: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+function Get-InstallationProfile {
+    <#
+    .SYNOPSIS
+        Load installation profile for a persona
+    .DESCRIPTION
+        Retrieves saved installation preferences for a persona
+    .PARAMETER PersonaName
+        Name of the persona
+    .PARAMETER ProfileDir
+        Directory containing profile files
+    .OUTPUTS
+        Profile object or null if not found
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PersonaName,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$ProfileDir
+    )
+    
+    try {
+        $profilePath = Join-Path $ProfileDir "$PersonaName.json"
+        
+        if (-not (Test-Path $profilePath)) {
+            Write-Verbose "No profile found for persona: $PersonaName"
+            return $null
+        }
+        
+        $content = Get-Content $profilePath -Raw -ErrorAction Stop
+        $profile = $content | ConvertFrom-Json -ErrorAction Stop
+        
+        Write-Verbose "Loaded installation profile for: $PersonaName"
+        return $profile
+    }
+    catch {
+        Write-Warning "Failed to load installation profile: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+function Remove-InstallationProfile {
+    <#
+    .SYNOPSIS
+        Delete installation profile for a persona
+    .DESCRIPTION
+        Removes the saved installation profile file
+    .PARAMETER PersonaName
+        Name of the persona
+    .PARAMETER ProfileDir
+        Directory containing profile files
+    .OUTPUTS
+        Boolean indicating success
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PersonaName,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$ProfileDir
+    )
+    
+    try {
+        $profilePath = Join-Path $ProfileDir "$PersonaName.json"
+        
+        if (-not (Test-Path $profilePath)) {
+            Write-Verbose "No profile found to delete for: $PersonaName"
+            return $false
+        }
+        
+        Remove-Item $profilePath -Force
+        Write-Verbose "Deleted installation profile: $PersonaName"
+        return $true
+    }
+    catch {
+        Write-Warning "Failed to delete installation profile: $($_.Exception.Message)"
+        return $false
+    }
+}
+
 # Export functions
-Export-ModuleMember -Function Import-Personas, Save-Persona, New-Persona, Edit-Persona, Test-PersonaName, Get-PersonaSummary
+Export-ModuleMember -Function Import-Personas, Save-Persona, New-Persona, Edit-Persona, Test-PersonaName, Get-PersonaSummary, Export-PersonaBackup, Import-PersonaBackup, Get-PersonaBackups, Save-InstallationProfile, Get-InstallationProfile, Remove-InstallationProfile

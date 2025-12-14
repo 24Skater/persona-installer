@@ -14,7 +14,7 @@ param(
 )
 
 # Version
-$Version = "1.4.0"
+$Version = "1.5.0"
 
 $ErrorActionPreference = "Stop"
 
@@ -56,7 +56,7 @@ function Import-PersonaModules {
     param([string]$ModulesPath, [hashtable]$Config = @{})
     
     # Core modules (always load) - CompatibilityHelper first for cross-version support
-    $coreModules = @('CompatibilityHelper', 'PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger')
+    $coreModules = @('CompatibilityHelper', 'PersonaManager', 'CatalogManager', 'InstallEngine', 'UIHelper', 'Logger', 'InstallationHistory')
     
     # Optional v1.2.0+ modules (load based on feature flags)
     $optionalModules = @()
@@ -68,6 +68,9 @@ function Import-PersonaModules {
     }
     if ($Config.Features.EnhancedProgress) {
         $optionalModules += 'EnhancedProgressManager'
+    }
+    if ($Config.Features.EnableUpdates -ne $false) {
+        $optionalModules += 'UpdateManager'
     }
     
     $allModules = $coreModules + $optionalModules
@@ -171,6 +174,14 @@ function Invoke-MainMenu {
     $menuActions["Edit existing persona"] = "EditPersona"
     $menuActions["Manage catalog (add package)"] = "ManageCatalog"
     $menuActions["View catalog"] = "ViewCatalog"
+    $menuActions["View installation history"] = "ViewHistory"
+    
+    # Check for updates (if feature enabled)
+    if ($Config.Features.EnableUpdates -ne $false) {
+        $menuActions["Check for updates"] = "CheckUpdates"
+    }
+    
+    $menuActions["Backup/Restore personas"] = "PersonaBackup"
     $menuActions["Exit"] = "Exit"
     
     # Extract menu options (keys) as array for display
@@ -211,6 +222,15 @@ function Invoke-MainMenu {
                 }
                 "ViewCatalog" {
                     Invoke-ViewCatalog -Catalog $Catalog -Config $Config
+                }
+                "ViewHistory" {
+                    Invoke-ViewHistory -Config $Config
+                }
+                "CheckUpdates" {
+                    Invoke-CheckUpdates -Personas $Personas -Catalog $Catalog -Config $Config -LogConfig $LogConfig
+                }
+                "PersonaBackup" {
+                    Invoke-PersonaBackup -Config $Config -LogConfig $LogConfig
                 }
                 "Exit" {
                     Write-Host "`nThank you for using Persona Installer!" -ForegroundColor Green
@@ -291,6 +311,10 @@ function Invoke-SmartRecommendations {
                     $result = Install-PersonaApps -Persona $persona -SelectedOptionalApps $selectedOptional -Catalog $Catalog -LogsDir $LogsDir -Settings $installSettings -UseEnhancedProgress:$useEnhanced -DryRun:$DryRun
                     Show-InstallationResults -Summary $result -ShowDetails:($Config.UI.ShowDetailedResults -eq $true)
                     
+                    # Record installation to history
+                    $historyPath = Join-Path $DataDir "history/install-history.json"
+                    Add-InstallationRecord -HistoryPath $historyPath -PersonaName $persona.name -Apps $result.Results -TotalDuration $result.Duration -Successful $result.Successful -Failed $result.Failed
+                    
                     Write-InstallLog -AppName $persona.name -WingetId "persona" -Status "Completed" -Message "Persona installation finished" -Duration $result.Duration -Config $LogConfig
                 }
                 finally {
@@ -330,9 +354,26 @@ function Invoke-InstallPersona {
     # Show persona details
     Write-Host (Get-PersonaSummary -Persona $persona) -ForegroundColor Cyan
     
+    # Check for saved profile
+    $profileDir = Join-Path $DataDir "profiles"
+    $savedProfile = Get-InstallationProfile -PersonaName $persona.name -ProfileDir $profileDir
+    $useProfile = $false
+    
+    if ($savedProfile) {
+        Write-Host "`n[i] Saved profile found for '$($persona.name)':" -ForegroundColor Cyan
+        Write-Host "    Saved: $($savedProfile.savedAt)" -ForegroundColor Gray
+        Write-Host "    Optional apps: $($savedProfile.selectedOptionalApps -join ', ')" -ForegroundColor Gray
+        
+        $useProfileChoice = Read-Host "`nUse saved profile? (Y/N)"
+        $useProfile = $useProfileChoice -match '^(y|yes)$'
+    }
+    
     # Select optional apps
     $selectedOptional = @()
-    if ($persona.optional.Count -gt 0) {
+    if ($useProfile -and $savedProfile.selectedOptionalApps) {
+        $selectedOptional = @($savedProfile.selectedOptionalApps)
+        Write-Host "`nUsing saved optional apps selection." -ForegroundColor Green
+    } elseif ($persona.optional.Count -gt 0) {
         $selectedOptional = Select-Apps -Apps $persona.optional -Title "Select optional apps for '$($persona.name)'"
     }
     
@@ -406,7 +447,22 @@ function Invoke-InstallPersona {
         }
         Show-InstallationResults -Summary $result -ShowDetails:($Config.UI.ShowDetailedResults -eq $true)
         
+        # Record installation to history
+        $historyPath = Join-Path $DataDir "history/install-history.json"
+        Add-InstallationRecord -HistoryPath $historyPath -PersonaName $persona.name -Apps $result.Results -TotalDuration $result.Duration -Successful $result.Successful -Failed $result.Failed
+        
         Write-InstallLog -AppName $persona.name -WingetId "persona" -Status "Completed" -Message "Persona installation finished" -Duration $result.Duration -Config $LogConfig
+        
+        # Offer to save profile (if optional apps were selected and not using existing profile)
+        if ($selectedOptional.Count -gt 0 -and -not $useProfile) {
+            $saveProfileChoice = Read-Host "`nSave this configuration as profile for future use? (Y/N)"
+            if ($saveProfileChoice -match '^(y|yes)$') {
+                $profilePath = Save-InstallationProfile -PersonaName $persona.name -SelectedOptionalApps $selectedOptional -ProfileDir $profileDir -Settings $installSettings
+                if ($profilePath) {
+                    Write-Host "Profile saved: $profilePath" -ForegroundColor Green
+                }
+            }
+        }
     }
     finally {
         Stop-LoggedOperation -Operation $operation -Context @{ persona = $persona.name; total_apps = ($persona.base.Count + $selectedOptional.Count) }
@@ -533,6 +589,223 @@ function Invoke-ViewCatalog {
     
     if ($Config.UI.PauseAfterOperations -ne $false) {
         Read-Host "Press Enter to continue"
+    }
+}
+
+function Invoke-ViewHistory {
+    param($Config)
+    
+    $historyPath = Join-Path $DataDir "history/install-history.json"
+    
+    Write-Host "`n=== Installation History ===" -ForegroundColor Cyan
+    
+    # Prompt for filter
+    Write-Host "`nFilter options:" -ForegroundColor Yellow
+    Write-Host "  1. Last 7 days"
+    Write-Host "  2. Last 30 days"
+    Write-Host "  3. All history"
+    Write-Host "  4. Export to CSV"
+    Write-Host "  5. Return to menu"
+    
+    $filterChoice = Read-Host "`nSelect option (1-5)"
+    
+    switch ($filterChoice) {
+        "1" {
+            $records = Get-InstallationHistory -HistoryPath $historyPath -Days 7
+            Show-InstallationHistoryRecords -Records $records -Title "Last 7 Days"
+        }
+        "2" {
+            $records = Get-InstallationHistory -HistoryPath $historyPath -Days 30
+            Show-InstallationHistoryRecords -Records $records -Title "Last 30 Days"
+        }
+        "3" {
+            $records = Get-InstallationHistory -HistoryPath $historyPath
+            Show-InstallationHistoryRecords -Records $records -Title "All History"
+        }
+        "4" {
+            $exportPath = Join-Path $DataDir "history/history-export-$(Get-Date -Format 'yyyyMMdd-HHmmss').csv"
+            $result = Export-InstallationHistory -HistoryPath $historyPath -OutputPath $exportPath -Format CSV
+            if ($result) {
+                Write-Host "`nExported to: $result" -ForegroundColor Green
+            } else {
+                Write-Host "`nExport failed or no records to export." -ForegroundColor Yellow
+            }
+        }
+        "5" {
+            return
+        }
+        default {
+            Write-Host "Invalid selection." -ForegroundColor Yellow
+        }
+    }
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Read-Host "`nPress Enter to continue"
+    }
+}
+
+function Invoke-PersonaBackup {
+    param($Config, $LogConfig)
+    
+    $backupDir = Join-Path $RepoRoot "data/backups"
+    
+    Write-Host "`n=== Persona Backup/Restore ===" -ForegroundColor Cyan
+    Write-Host "`nOptions:" -ForegroundColor Yellow
+    Write-Host "  1. Backup all personas"
+    Write-Host "  2. Backup single persona"
+    Write-Host "  3. Restore from backup"
+    Write-Host "  4. View available backups"
+    Write-Host "  5. Return to menu"
+    
+    $choice = Read-Host "`nSelect option (1-5)"
+    
+    switch ($choice) {
+        "1" {
+            Write-Host "`nBacking up all personas..." -ForegroundColor Cyan
+            $result = Export-PersonaBackup -PersonaDir $PersonaDir -BackupDir $backupDir
+            if ($result) {
+                Write-Host "Backup created: $result" -ForegroundColor Green
+                Write-Log -Level 'INFO' -Message "Persona backup created" -Context @{ path = $result } -Config $LogConfig
+            }
+        }
+        "2" {
+            $personas = Import-Personas -PersonaDir $PersonaDir
+            if ($personas.Count -eq 0) {
+                Write-Host "No personas found." -ForegroundColor Yellow
+                return
+            }
+            
+            $selection = Show-PersonaList -Personas $personas
+            if ($selection -eq 0) {
+                Write-Host "Invalid selection." -ForegroundColor Yellow
+                return
+            }
+            
+            $persona = $personas[$selection - 1]
+            Write-Host "`nBacking up '$($persona.name)'..." -ForegroundColor Cyan
+            $result = Export-PersonaBackup -PersonaDir $PersonaDir -BackupDir $backupDir -PersonaName $persona.name
+            if ($result) {
+                Write-Host "Backup created: $result" -ForegroundColor Green
+                Write-Log -Level 'INFO' -Message "Single persona backup created" -Context @{ persona = $persona.name; path = $result } -Config $LogConfig
+            }
+        }
+        "3" {
+            $backups = Get-PersonaBackups -BackupDir $backupDir
+            if ($backups.Count -eq 0) {
+                Write-Host "`nNo backups found." -ForegroundColor Yellow
+                return
+            }
+            
+            Write-Host "`nAvailable backups:" -ForegroundColor Yellow
+            for ($i = 0; $i -lt $backups.Count; $i++) {
+                Write-Host "  [$($i + 1)] $($backups[$i].Name) - $($backups[$i].Date.ToString('yyyy-MM-dd HH:mm')) ($($backups[$i].SizeMB) MB)"
+            }
+            
+            $selection = Read-Host "`nSelect backup to restore (1-$($backups.Count))"
+            if ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $backups.Count) {
+                $backup = $backups[[int]$selection - 1]
+                Write-Host "`nRestoring from: $($backup.Name)" -ForegroundColor Cyan
+                $restored = Import-PersonaBackup -BackupPath $backup.Path -PersonaDir $PersonaDir
+                Write-Host "`nRestored $restored persona(s)." -ForegroundColor Green
+                Write-Log -Level 'INFO' -Message "Personas restored from backup" -Context @{ backup = $backup.Name; count = $restored } -Config $LogConfig
+            } else {
+                Write-Host "Invalid selection." -ForegroundColor Yellow
+            }
+        }
+        "4" {
+            $backups = Get-PersonaBackups -BackupDir $backupDir
+            if ($backups.Count -eq 0) {
+                Write-Host "`nNo backups found." -ForegroundColor Yellow
+            } else {
+                Write-Host "`nAvailable backups:" -ForegroundColor Cyan
+                Write-Host ("-" * 60) -ForegroundColor Gray
+                foreach ($backup in $backups) {
+                    Write-Host "$($backup.Name)" -ForegroundColor White
+                    Write-Host "  Date: $($backup.Date.ToString('yyyy-MM-dd HH:mm'))" -ForegroundColor Gray
+                    Write-Host "  Size: $($backup.SizeMB) MB" -ForegroundColor Gray
+                }
+            }
+        }
+        "5" {
+            return
+        }
+        default {
+            Write-Host "Invalid selection." -ForegroundColor Yellow
+        }
+    }
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Read-Host "`nPress Enter to continue"
+    }
+}
+
+function Invoke-CheckUpdates {
+    param($Personas, $Catalog, $Config, $LogConfig)
+    
+    Write-Host "`n=== Check for Updates ===" -ForegroundColor Cyan
+    Write-Log -Level 'INFO' -Message "Checking for updates" -Config $LogConfig
+    
+    Write-Host "`nOptions:" -ForegroundColor Yellow
+    Write-Host "  1. Check all installed apps"
+    Write-Host "  2. Check specific persona apps"
+    Write-Host "  3. Update all available"
+    Write-Host "  4. Return to menu"
+    
+    $choice = Read-Host "`nSelect option (1-4)"
+    
+    switch ($choice) {
+        "1" {
+            Write-Host "`nChecking for updates..." -ForegroundColor Cyan
+            $updates = Get-AvailableUpdates
+            Format-UpdateList -Updates $updates -Title "All Available Updates"
+            
+            if ($updates.Count -gt 0) {
+                $install = Read-Host "`nInstall all updates? (Y/N)"
+                if ($install -match '^(y|yes)$') {
+                    Update-PersonaApps -Updates $updates -DryRun:$DryRun
+                }
+            }
+        }
+        "2" {
+            if ($Personas.Count -eq 0) {
+                Write-Host "No personas found." -ForegroundColor Yellow
+                return
+            }
+            
+            $selection = Show-PersonaList -Personas $Personas
+            if ($selection -eq 0) {
+                Write-Host "Invalid selection." -ForegroundColor Yellow
+                return
+            }
+            
+            $persona = $Personas[$selection - 1]
+            $allApps = @($persona.base) + @($persona.optional)
+            
+            Write-Host "`nChecking updates for '$($persona.name)'..." -ForegroundColor Cyan
+            $updates = Get-PersonaUpdateStatus -PersonaApps $allApps -Catalog $Catalog
+            Format-UpdateList -Updates $updates -Title "Updates for $($persona.name)"
+            
+            if ($updates.Count -gt 0) {
+                $install = Read-Host "`nInstall updates? (Y/N)"
+                if ($install -match '^(y|yes)$') {
+                    Update-PersonaApps -Updates $updates -DryRun:$DryRun
+                }
+            }
+        }
+        "3" {
+            Write-Host "`nUpdating all apps..." -ForegroundColor Cyan
+            Update-AllApps -DryRun:$DryRun
+        }
+        "4" {
+            return
+        }
+        default {
+            Write-Host "Invalid selection." -ForegroundColor Yellow
+        }
+    }
+    
+    if ($Config.UI.PauseAfterOperations -ne $false) {
+        Read-Host "`nPress Enter to continue"
     }
 }
 

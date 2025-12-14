@@ -64,6 +64,12 @@ Describe 'PersonaManager Module' {
             $exportedFunctions | Should -Contain 'Edit-Persona'
             $exportedFunctions | Should -Contain 'Test-PersonaName'
             $exportedFunctions | Should -Contain 'Get-PersonaSummary'
+            $exportedFunctions | Should -Contain 'Export-PersonaBackup'
+            $exportedFunctions | Should -Contain 'Import-PersonaBackup'
+            $exportedFunctions | Should -Contain 'Get-PersonaBackups'
+            $exportedFunctions | Should -Contain 'Save-InstallationProfile'
+            $exportedFunctions | Should -Contain 'Get-InstallationProfile'
+            $exportedFunctions | Should -Contain 'Remove-InstallationProfile'
         }
     }
     
@@ -201,6 +207,156 @@ Describe 'PersonaManager Module' {
             $summary = Get-PersonaSummary -Persona $persona
             
             $summary | Should -Match '\(none\)'
+        }
+    }
+    
+    Context 'Export-PersonaBackup' {
+        BeforeAll {
+            $script:testBackupDir = Join-Path $TestDrive 'backups'
+        }
+        
+        It 'Should create backup archive for all personas' {
+            $result = Export-PersonaBackup -PersonaDir $script:testPersonaDir -BackupDir $script:testBackupDir
+            
+            $result | Should -Not -BeNullOrEmpty
+            Test-Path $result | Should -Be $true
+            $result | Should -Match '\.zip$'
+        }
+        
+        It 'Should create backup for single persona' {
+            $result = Export-PersonaBackup -PersonaDir $script:testPersonaDir -BackupDir $script:testBackupDir -PersonaName 'dev'
+            
+            $result | Should -Not -BeNullOrEmpty
+            Test-Path $result | Should -Be $true
+            $result | Should -Match 'persona-dev.*\.zip$'
+        }
+        
+        It 'Should return null for non-existent persona' {
+            $result = Export-PersonaBackup -PersonaDir $script:testPersonaDir -BackupDir $script:testBackupDir -PersonaName 'nonexistent'
+            
+            $result | Should -BeNullOrEmpty
+        }
+    }
+    
+    Context 'Import-PersonaBackup' {
+        BeforeAll {
+            $script:testBackupDir = Join-Path $TestDrive 'backups-restore'
+            $script:testRestoreDir = Join-Path $TestDrive 'restore-personas'
+            New-Item -ItemType Directory -Path $script:testRestoreDir -Force | Out-Null
+        }
+        
+        It 'Should restore personas from backup' {
+            # Create backup first
+            $backupPath = Export-PersonaBackup -PersonaDir $script:testPersonaDir -BackupDir $script:testBackupDir
+            
+            # Restore to new directory
+            $result = Import-PersonaBackup -BackupPath $backupPath -PersonaDir $script:testRestoreDir -Force
+            
+            $result | Should -BeGreaterOrEqual 1
+        }
+        
+        It 'Should return 0 for non-existent backup' {
+            $result = Import-PersonaBackup -BackupPath 'C:\nonexistent\backup.zip' -PersonaDir $script:testRestoreDir
+            
+            $result | Should -Be 0
+        }
+    }
+    
+    Context 'Get-PersonaBackups' {
+        BeforeAll {
+            $script:testBackupDir = Join-Path $TestDrive 'backups-list'
+            # Create some backups
+            Export-PersonaBackup -PersonaDir $script:testPersonaDir -BackupDir $script:testBackupDir | Out-Null
+        }
+        
+        It 'Should return list of backups' {
+            $backups = Get-PersonaBackups -BackupDir $script:testBackupDir
+            
+            $backups.Count | Should -BeGreaterOrEqual 1
+        }
+        
+        It 'Should return backup info with expected properties' {
+            $backups = Get-PersonaBackups -BackupDir $script:testBackupDir
+            
+            $backups[0].Name | Should -Not -BeNullOrEmpty
+            $backups[0].Path | Should -Not -BeNullOrEmpty
+            $backups[0].Date | Should -Not -BeNullOrEmpty
+        }
+        
+        It 'Should return empty array for non-existent directory' {
+            $backups = Get-PersonaBackups -BackupDir 'C:\nonexistent\backups'
+            
+            $backups.Count | Should -Be 0
+        }
+    }
+    
+    Context 'Save-InstallationProfile' {
+        BeforeAll {
+            $script:testProfileDir = Join-Path $TestDrive 'profiles'
+        }
+        
+        It 'Should create profile file' {
+            $result = Save-InstallationProfile -PersonaName 'dev' -SelectedOptionalApps @('Docker', 'Node.js') -ProfileDir $script:testProfileDir
+            
+            $result | Should -Not -BeNullOrEmpty
+            Test-Path $result | Should -Be $true
+        }
+        
+        It 'Should save selected optional apps' {
+            Save-InstallationProfile -PersonaName 'test-profile' -SelectedOptionalApps @('App1', 'App2') -ProfileDir $script:testProfileDir
+            
+            $profile = Get-InstallationProfile -PersonaName 'test-profile' -ProfileDir $script:testProfileDir
+            $profile.selectedOptionalApps | Should -Contain 'App1'
+            $profile.selectedOptionalApps | Should -Contain 'App2'
+        }
+        
+        It 'Should create profile directory if missing' {
+            $newProfileDir = Join-Path $TestDrive 'new-profiles'
+            
+            $result = Save-InstallationProfile -PersonaName 'test' -SelectedOptionalApps @() -ProfileDir $newProfileDir
+            
+            Test-Path $newProfileDir | Should -Be $true
+        }
+    }
+    
+    Context 'Get-InstallationProfile' {
+        BeforeAll {
+            $script:testProfileDir = Join-Path $TestDrive 'profiles-get'
+            Save-InstallationProfile -PersonaName 'existing' -SelectedOptionalApps @('TestApp') -ProfileDir $script:testProfileDir | Out-Null
+        }
+        
+        It 'Should load existing profile' {
+            $profile = Get-InstallationProfile -PersonaName 'existing' -ProfileDir $script:testProfileDir
+            
+            $profile | Should -Not -BeNullOrEmpty
+            $profile.personaName | Should -Be 'existing'
+        }
+        
+        It 'Should return null for non-existent profile' {
+            $profile = Get-InstallationProfile -PersonaName 'nonexistent' -ProfileDir $script:testProfileDir
+            
+            $profile | Should -BeNullOrEmpty
+        }
+    }
+    
+    Context 'Remove-InstallationProfile' {
+        BeforeAll {
+            $script:testProfileDir = Join-Path $TestDrive 'profiles-remove'
+            Save-InstallationProfile -PersonaName 'to-delete' -SelectedOptionalApps @() -ProfileDir $script:testProfileDir | Out-Null
+        }
+        
+        It 'Should delete existing profile' {
+            $result = Remove-InstallationProfile -PersonaName 'to-delete' -ProfileDir $script:testProfileDir
+            
+            $result | Should -Be $true
+            $profilePath = Join-Path $script:testProfileDir 'to-delete.json'
+            Test-Path $profilePath | Should -Be $false
+        }
+        
+        It 'Should return false for non-existent profile' {
+            $result = Remove-InstallationProfile -PersonaName 'nonexistent' -ProfileDir $script:testProfileDir
+            
+            $result | Should -Be $false
         }
     }
 }
