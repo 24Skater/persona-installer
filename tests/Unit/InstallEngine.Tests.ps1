@@ -183,6 +183,7 @@ Describe 'InstallEngine Module' {
     Context 'Show-InstallationResults' {
         It 'Should display results without error' {
             $summary = [PSCustomObject]@{
+                PersonaName = 'test'
                 Results = @(
                     [PSCustomObject]@{ DisplayName = 'Git'; Status = 'Success'; WingetId = 'Git.Git'; Duration = [TimeSpan]::FromSeconds(30); LogPath = ''; Message = '' },
                     [PSCustomObject]@{ DisplayName = 'Docker'; Status = 'Failed'; WingetId = 'Docker.DockerDesktop'; Duration = [TimeSpan]::FromSeconds(60); LogPath = ''; Message = 'Failed' }
@@ -191,7 +192,7 @@ Describe 'InstallEngine Module' {
                 Successful = 1
                 Failed = 1
                 Skipped = 0
-                TotalDuration = [TimeSpan]::FromSeconds(90)
+                Duration = [TimeSpan]::FromSeconds(90)
             }
             
             { Show-InstallationResults -Summary $summary } | Should -Not -Throw
@@ -199,12 +200,13 @@ Describe 'InstallEngine Module' {
         
         It 'Should handle empty results' {
             $summary = [PSCustomObject]@{
+                PersonaName = 'empty'
                 Results = @()
                 TotalApps = 0
                 Successful = 0
                 Failed = 0
                 Skipped = 0
-                TotalDuration = [TimeSpan]::Zero
+                Duration = [TimeSpan]::Zero
             }
             
             { Show-InstallationResults -Summary $summary } | Should -Not -Throw
@@ -212,6 +214,7 @@ Describe 'InstallEngine Module' {
         
         It 'Should handle all success results' {
             $summary = [PSCustomObject]@{
+                PersonaName = 'success'
                 Results = @(
                     [PSCustomObject]@{ DisplayName = 'Git'; Status = 'Success'; Duration = [TimeSpan]::FromSeconds(10); LogPath = ''; Message = '' },
                     [PSCustomObject]@{ DisplayName = 'VS Code'; Status = 'Success'; Duration = [TimeSpan]::FromSeconds(20); LogPath = ''; Message = '' }
@@ -220,7 +223,7 @@ Describe 'InstallEngine Module' {
                 Successful = 2
                 Failed = 0
                 Skipped = 0
-                TotalDuration = [TimeSpan]::FromSeconds(30)
+                Duration = [TimeSpan]::FromSeconds(30)
             }
             
             { Show-InstallationResults -Summary $summary } | Should -Not -Throw
@@ -228,6 +231,7 @@ Describe 'InstallEngine Module' {
         
         It 'Should handle dry run results' {
             $summary = [PSCustomObject]@{
+                PersonaName = 'dryrun'
                 Results = @(
                     [PSCustomObject]@{ DisplayName = 'Git'; Status = 'DryRun'; Duration = [TimeSpan]::Zero; LogPath = ''; Message = '' }
                 )
@@ -235,7 +239,7 @@ Describe 'InstallEngine Module' {
                 Successful = 0
                 Failed = 0
                 Skipped = 1
-                TotalDuration = [TimeSpan]::Zero
+                Duration = [TimeSpan]::Zero
             }
             
             { Show-InstallationResults -Summary $summary } | Should -Not -Throw
